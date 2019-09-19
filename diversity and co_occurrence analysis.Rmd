@@ -1,0 +1,249 @@
+---
+title: "Diversity analysis"
+author: "Dan Weinberger"
+date: "September 19, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+library(readr)
+library(MASS)
+library(rio)
+library(readxl)
+library(htmlTable)
+```
+
+##Read in main data
+Clonal cluster
+```{r}
+cc1<-read.csv('./Data/serotype_cluster_mat.csv')
+names(cc1)[1]<-'st'
+
+```
+
+MLST
+```{r}
+mlst1<-read.csv('./Data/serotype_mlst_mat.csv')
+names(mlst1)[1]<-'st'
+```
+
+GPS
+```{r}
+gps1<-read_excel('./Data/gladstone gps.xlsx',guess_max=10000)
+gps1<-gps1[,c('In_Silico_Serotype', 'GPSC')]
+names(gps1)<-c('st','SC')
+gps1$count<-1
+gps1.m<-melt(gps1, id.vars=c('st','SC'))
+gps1.c<- dcast(gps1.m,st~SC,fun.aggregate = sum )
+gps1.c$st[gps1.c$st=='15BC']<-'15B/C'
+```
+
+##Read in auxillary data
+```{r cars}
+carr1<-import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/carr%20data.csv')
+carr1$ST[carr1$ST %in% c('15B','15C')]<-'15B/C'
+carr1<-aggregate(carr1[,-1], by=list('ST'=carr1$ST), FUN=sum)
+
+ps1<-import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/PS%20Composition_SS_final.csv')
+ps1$Serotype[ps1$Serotype=='15B']<-'15B/C'
+
+```
+
+Diversity analysis
+```{r}
+sugs<-c("Ac","FucNAc" ,'Gal',"GalNAc",'Glc', "GlcA","GlcNAc",   "Gro","ManNAc",'Rha')
+diversity.func<-function(sug.list,ds){
+  st.cc.diversity<- 1 -apply(ds[,-1], 1, function(x) sum((x/sum(x))^2) )
+  st.cc.sum<- apply(ds[,-1], 1, function(x) sum(x ))
+  st.cc.diversity<-cbind.data.frame('st'=ds[,1], st.cc.diversity,st.cc.sum)
+  st.cc.diversity<-st.cc.diversity[order(st.cc.diversity[,'st.cc.diversity']),]
+  st.cc.diversity<-merge(st.cc.diversity, carr1, by.x='st', by.y='ST', all=T)
+  st.cc.diversity<-merge(st.cc.diversity, ps1, by.x='st', by.y='Serotype', all=T)
+  st.cc.diversity$SLEEMANCARRN[is.na(st.cc.diversity$SLEEMANCARRN)]<-0
+  st.cc.diversity$NORWAYCARR_PRE[is.na(st.cc.diversity$NORWAYCARR_PRE)]<-0
+  st.cc.diversity$st.cc.diversity[st.cc.diversity$st.cc.diversity==0]<-0.01
+  st.cc.diversity$st.cc.diversity[st.cc.diversity$st.cc.diversity==1]<-0.99
+  logit.diversity<- log(st.cc.diversity$st.cc.diversity/(1-st.cc.diversity$st.cc.diversity))
+ # plot(logit.diversity, log(st.cc.diversity$st.cc.sum))
+form1<-as.formula(paste0('logit.diversity~ log(st.cc.sum) +', sug.list)    )
+  mod1<-lm(form1, data=st.cc.diversity)
+  summary(mod1)$df[2]
+  sug.est<-c('estimate'=summary(mod1)$coefficients[sug.list,'Estimate'], confint(mod1)[sug.list,])
+  AIC1<-AIC(mod1)
+  df<-  summary(mod1)$df[2]
+  return(list('sug.est'=sug.est, 'AIC'=AIC1,'df'=df))
+}
+```
+Diversity by CC
+```{r}
+cc.div<-lapply(sugs, diversity.func, ds=cc1)
+cbind(sugs,sapply(cc.div, '[[', 'AIC'))
+cbind(sugs,t(sapply(cc.div, '[[', 'sug.est')))
+cbind(sugs,sapply(cc.div, '[[', 'df'))
+```
+
+Diversity by MLST
+```{r}
+mlst.div<-lapply(sugs, diversity.func, ds=mlst1)
+cbind(sugs,sapply(mlst.div, '[[', 'AIC'))
+cbind(sugs,t(sapply(mlst.div, '[[', 'sug.est')))
+cbind(sugs,sapply(mlst.div, '[[', 'df'))
+
+```
+
+Diversity by GPSC
+```{r}
+gps.div<-lapply(sugs, diversity.func, ds=gps1.c)
+cbind(sugs,sapply(gps.div, '[[', 'AIC'))
+cbind(sugs,t(sapply(gps.div, '[[', 'sug.est')))
+cbind(sugs,sapply(gps.div, '[[', 'df'))
+
+```
+
+Generate co-occurrence matrix. Count how often StA and StB occur on same CC/MLST/GPSC
+```{r}
+co.occur.func<-function(ds){
+    st.mlstN.alt<- cbind.data.frame('st'=as.character(ds[,1]),  'mlstN'=apply(ds[,-1],1,function(x) sum(x>0)))
+    
+    #Co-occurrence matrix
+    cc1.m<-reshape2::melt(ds, id.vars = 'st')
+    names(cc1.m)<-c('st','mlst','n.isolate')
+    N.mlst<-length(unique(cc1.m$mlst))
+    cc1.spl<-split(cc1.m, cc1.m$mlst)
+    cc1.spl<-lapply(cc1.spl, function(x) x<-x[x$n.isolate>0,])
+    obs.pairs<-lapply(cc1.spl, function(x) if(nrow(x)>=2){matrix(as.character(t(combn(x$st, m=2))), ncol=2)}  ) 
+    #combinat
+    obs.pairs<-do.call('rbind',obs.pairs )
+    obs.pairs<-as.data.frame(obs.pairs)
+    obs.pairs$count<-1
+    names(obs.pairs)<-c('stA','stB','count')
+    co.occur<-aggregate(obs.pairs[,'count', drop=F], by=list('stA'=obs.pairs$stA, 'stB'=obs.pairs$stB), FUN=sum)
+    #############
+    ##Ensures we have a symmetric matrix
+    co.occur.flip<-co.occur
+    names(co.occur.flip)<-c('stB', 'stA','count' )
+    co.occur<-rbind.data.frame(co.occur,co.occur.flip) 
+    #############
+    co.occur.m<-melt(co.occur, id.vars=c('stA', 'stB'))
+    co.occur.c1<-dcast(co.occur.m, stB~stA)
+    co.occur.cc<-melt(co.occur.c1, id.vars=c('stB'))
+    names(co.occur.cc)<- c('Sero1', 'Sero2','ccN' )
+    co.occur.cc$Sero1<-as.character(co.occur.cc$Sero1)
+    co.occur.cc$Sero2<-as.character(co.occur.cc$Sero2)
+    co.occur.cc$ccN[is.na(co.occur.cc$ccN)]<-0
+    
+    cc2<-merge(co.occur.cc,st.mlstN.alt,by.x='Sero1', by.y='st' , all=T)
+    cc2<-merge(cc2,st.mlstN.alt,by.x='Sero2', by.y='st' )
+    
+    cc2$st.mlstN.combined<-cc2$mlstN.x/N.mlst * cc2$mlstN.y/N.mlst
+    box.cox.func<-function(x, lambda){
+      y<- (x^lambda-1)/lambda
+    }
+    cc2$log.st.mlstn.combined<- box.cox.func(cc2$st.mlstN.combined, lambda=0.01)
+    hist(cc2$log.st.mlstn.combined)
+    mean(cc2$log.st.mlstn.combined)
+    median(cc2$log.st.mlstn.combined)
+    range(cc2$log.st.mlstn.combined)
+    
+    cc2$sgA<-as.numeric(gsub("([0-9]+).*$", "\\1", cc2$Sero1))
+    cc2$sgB<-as.numeric(gsub("([0-9]+).*$", "\\1", cc2$Sero2))
+    cc2$same.sg<- as.numeric((cc2$sgA==cc2$sgB))
+    plot(cc2$log.st.mlstn.combined, log(cc2$ccN+0.5))
+
+    cc3<-merge(cc2,ps1, by.x='Sero1',by.y='Serotype')
+    ds2<-merge(cc3,ps1, by.x='Sero2',by.y='Serotype')
+    ds2$both.glcA<- as.factor(ds2$GlcA.x +  ds2$GlcA.y )
+    ds2$both.glcA<-relevel(ds2$both.glcA,ref='1')
+    ds2$both.gal<- as.factor(ds2$Gal.x + ds2$Gal.y)
+    ds2$both.gal<-relevel(ds2$both.gal,ref='1')
+    ds2$both.glcnac<- as.factor(ds2$GlcNAc.x + ds2$GlcNAc.y)
+    ds2$both.glc<- as.factor(ds2$Glc.x + ds2$Glc.y)
+    ds2$both.glc<-relevel(ds2$both.glc,ref='1')
+    ds2$both.ac<- as.factor(ds2$Ac.y + ds2$Ac.y)
+    ds2$both.rha<- as.factor(ds2$Rha.x + ds2$Rha.y)
+    ds2$both.gro<- as.factor(ds2$Gro.x + ds2$Gro.y)
+    ds2$both.ribol<- as.factor(ds2$`Rib-ol.x` + ds2$`Rib-ol.y`)
+    ds2$both.cho<- as.factor(ds2$Cho.x + ds2$Cho.y)
+    ds2$both.fucnac<- as.factor(ds2$FucNAc.x + ds2$FucNAc.y)
+    ds2$both.mannac<- as.factor(ds2$ManNAc.x + ds2$ManNAc.y)
+    ds2$NAC.x.N<- apply(ds2[,c('FucNAc.x','GalNAc.x', 'ManNAc.x', 'ManNAcA.x','PneNAc.x', 'GlcNAc.x')], 1,sum)
+    ds2$NAC.y.N<- apply(ds2[,c('FucNAc.y','GalNAc.y', 'ManNAc.y', 'ManNAcA.y','PneNAc.y', 'GlcNAc.y')], 1,sum)
+    ds2$both.NAC<-as.factor( (ds2$NAC.x.N>0) + (ds2$NAC.y.N>0))
+    ds2$both.NAC<-relevel(ds2$both.NAC,ref='1')
+    
+    ds2$pair<-as.factor(paste(ds2$Sero1, ds2$Sero2, sep='_'))
+    
+    ds2$share_mlst_bin<-ds2$ccN
+    ds2$share_mlst_bin[ds2$share_mlst_bin>1]<-1
+return(ds2)
+}
+```
+
+Format the data for regression
+```{r}
+mlst.co<-co.occur.func(mlst1)
+cc.co<-co.occur.func(cc1)
+gps.co<-co.occur.func(gps1.c)
+```
+
+```{r}
+reg.func2<-function(ds2){
+  sug.vars<-c('both.glcA','both.NAC','both.rha', 'both.gal', 'both.glcnac','both.gro','both.fucnac','both.ribol','both.glc','both.mannac')
+  poisson.list<-  vector("list", length(sug.vars))
+  binomial.list<-  vector("list", length(sug.vars))
+  for(i in sug.vars){
+    form1<-as.formula(paste0('ccN ~  log.st.mlstn.combined +',i))
+    m1 <- glm(form1  ,  data=ds2[ds2[,i] %in% c('1','2') & ds2$same.sg==0,], family='quasipoisson')
+   # print(i)
+    #print(summary(m1)$coefficients[3,])
+    poisson.list[[i]]<-c('estimate'=summary(m1)$coefficients[3,'Estimate'], confint(m1)[3,])
+  }
+  
+  #Dichotomous instead
+  for(i in sug.vars){
+    form1<-as.formula(paste0('share_mlst_bin ~  log.st.mlstn.combined +',i))
+    m1 <- glm(form1  ,  data=ds2[ds2[,i] %in% c('1','2') & ds2$same.sg==0,], family='binomial')
+    #print(i)
+    #print(summary(m1)$coefficients[paste0(i,2),])
+    binomial.list[[i]]<-c('estimate'=summary(m1)$coefficients[3,'Estimate'], confint(m1)[3,])
+  }
+  
+  binomial.res<-do.call('rbind', binomial.list)
+  binomial.res<-round(binomial.res, 2)
+  binomial.res<-apply(binomial.res,1, function(x) paste0(x['estimate'] ," (",x['2.5 %'], ',',x['97.5 %']  ,")") )
+  
+  poisson.res<-do.call('rbind', poisson.list)
+  poisson.res<-round(poisson.res, 2)
+  poisson.res<-apply(poisson.res,1, function(x) paste0(x['estimate'] ," (",x['2.5 %'], ',',x['97.5 %']  ,")") )
+  
+  out.tab <- cbind.data.frame(poisson.res, binomial.res)
+  names(out.tab)<-c('Poisson', 'Logistic')
+  return(out.tab)
+}
+```
+
+```{r}
+mlst.tab<-reg.func2(mlst.co)
+names(mlst.tab)<-c('Poisson MLST', 'Logistic MLST')
+cc.tab<-reg.func2(cc.co)
+names(mlst.tab)<-c('Poisson CC', 'Logistic CC')
+gps.tab<-reg.func2(gps.co)
+names(mlst.tab)<-c('Poisson GPSC', 'Logistic GPSC')
+
+```
+
+```{r}
+combined.tab<-cbind( mlst.tab,cc.tab,gps.tab)
+combined.tab$sugar<-NULL
+combined.tab$X<-NULL
+combined.tab<-combined.tab[c('both.glc','both.glcA','both.NAC','both.rha','both.gal','both.glcnac','both.gro','both.fucnac',
+                             'both.ribol','both.mannac'), ]
+row.names(combined.tab)<-c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc')
+table1<-htmlTable(combined.tab, align='l',caption="Table 1. Association between the presence of specific sugars in the capsule and co-occurrence of serotype pairs on the same genetic background (MLST, CC, or GPSC). ")
+print(table1,type="html",useViewer=TRUE)
+```
+
+
+
