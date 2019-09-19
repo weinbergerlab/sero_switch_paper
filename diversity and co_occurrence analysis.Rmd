@@ -13,6 +13,8 @@ library(MASS)
 library(rio)
 library(readxl)
 library(htmlTable)
+library(arules)
+library(arulesViz)
 ```
 
 ##Read in main data
@@ -243,6 +245,93 @@ combined.tab<-combined.tab[c('both.glc','both.glcA','both.NAC','both.rha','both.
 row.names(combined.tab)<-c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc')
 table1<-htmlTable(combined.tab, align='l',caption="Table 1. Association between the presence of specific sugars in the capsule and co-occurrence of serotype pairs on the same genetic background (MLST, CC, or GPSC). ")
 print(table1,type="html",useViewer=TRUE)
+```
+
+##Market basket analysis
+```{r}
+mb.func<-function(ds1){
+    sero_st<-ds1
+    #Assign serotypes as row names
+    rownames(sero_st) <- sero_st$st
+    #Remove first column containing serotypes
+    sero_st <- sero_st[,-1]
+    
+    #Remove X from column names
+    colnames(sero_st) <- substring(colnames(sero_st),2)
+    #Convert the matrix to binary
+    sero_st[sero_st != 0] <- 1 
+    
+    #Transpose data
+    sero_st <- data.frame(t(sero_st))
+    #Remove X from column names
+    colnames(sero_st) <- substring(colnames(sero_st),2)
+    
+    #Change the column name for 15B.C to 15B/C
+    colnames(sero_st)[which(colnames(sero_st) == "15B.C")] <- "15B/C"
+    colnames(sero_st)[which(colnames(sero_st) == "7B.C")] <- "7B/C"
+    colnames(sero_st)[which(colnames(sero_st) == "6C.D")] <- "6C/D"
+    #sero_st <- sero_st[which(rowSums(sero_st) != 0),]
+    #sero_st <- sero_st[-which(rowSums(sero_st) == 1),]
+    
+    #Convert dataset to transcation data type for market basket analysis
+    ps_mat <- as.matrix(sero_st)
+    ps_tran <- as(ps_mat,"transactions")
+   # summary(ps_tran)
+    
+    #The plot shows the frequency of serotypes
+   # itemFrequencyPlot(ps_tran, topN = 25, type='absolute')
+  #  itemFrequency(ps_tran, type='absolute')
+    
+    #Since we are interested in the pairwise interactions between serotypes,
+    #rules with length of two will be generated to identify patterns of serotype co-occurence
+    rules_2 <- apriori(ps_tran,parameter = list(supp = 0.0001, conf = 0.0001,minlen=2, maxlen=2))
+   # summary(rules_2)
+    #Data frame for rules with 2 serotypes sorted by support
+    rules_2sero <- inspect(sort(rules_2, by ="lift"))
+    
+    #Default plot of rules_2 from arules
+    #plot(rules_2, method = "graph")
+    
+    #filter 
+    rule.inc <- subset(rules_2, subset =  lift > 1 & rules_2@quality$count>5)
+    #plot(rule.inc, method = "graph")
+    rule.inc.sig<-interestMeasure(rule.inc, measure = c("chiSquared","fishersExactTest"), transactions = ps_tran)
+    rule.inc2<-cbind(inspect(rule.inc),rule.inc.sig)
+    #rule.inc2[rule.inc2$fishersExactTest<0.05,]
+    
+    #The following code adds column for p-values from Fishers Exact test
+    #Make a dataframe with quality values for rules
+    r2_qual <- quality(rules_2)
+    #Include interest measures
+    r2_qual <- cbind(inspect(rules_2), interestMeasure(rules_2, measure = c("chiSquared","fishersExactTest"), transactions = ps_tran))
+    #r2_qual_sig <- r2_qual[which(r2_qual$count > 9),]
+    
+    #Drop duplicates from final results in r2_qual
+    #Function to remove duplicated combinations occuring on even number of rows
+    rem_dup <- function(comb_df){
+      i <- 1:nrow(comb_df)
+      j <- which(i %% 2 == 0)
+      comb_df <- comb_df[j,]
+    }
+    
+    #Remove duplicate rules
+    rules_all_2sero <- rem_dup(r2_qual)
+    rules_sig_2sero <- rules_all_2sero[rules_all_2sero$count > 2,]
+    
+    rules_sig_2sero<-rules_sig_2sero[order(-rules_sig_2sero$lift) ,]
+    rules_sig_2sero<-rules_sig_2sero[rules_sig_2sero$fishersExactTest<0.05 & rules_sig_2sero$count>3 & rules_sig_2sero$lift>1 ,]
+   # rules_sig_2sero[rules_sig_2sero$count>3 & rules_sig_2sero$lift>1,]
+    res<-list('rules_2sero'=rules_2sero, 'rules_sig_2sero'=rules_sig_2sero )
+    return(res)
+}
+```
+
+Run the Market Basket analysis
+```{r}
+cc1.mb<-mb.func(cc1)
+mlst1.mb<-mb.func(mlst1)
+gps1.mb<- mb.func(gps1.c)
+gps1.mb$rules_sig_2sero
 ```
 
 
