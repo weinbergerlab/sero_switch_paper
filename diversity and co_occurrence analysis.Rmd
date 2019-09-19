@@ -331,7 +331,13 @@ Run the Market Basket analysis
 cc1.mb<-mb.func(cc1)
 mlst1.mb<-mb.func(mlst1)
 gps1.mb<- mb.func(gps1.c)
+```
+Significant rules, ordered by lift
+```{r}
 gps1.mb$rules_sig_2sero
+```
+```{r}
+cc1.mb$rules_sig_2sero
 ```
 
 
