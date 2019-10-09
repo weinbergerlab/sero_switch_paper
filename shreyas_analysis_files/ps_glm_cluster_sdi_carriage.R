@@ -3,12 +3,14 @@ rm(list = ls())
 library("ggplot2")
 library("dplyr")
 library("stargazer")
+library(readr)
 
 #set working directory
-setwd("D:\\ss_paper")
+setwd('C:/Users/dmw63/Desktop/My documents h/MLST Database/sero_switch_paper/shreyas_analysis_files/')
 
 #load file with carriage data
-carriage <- read.csv("sdi/pneumo_master_carriage.csv",stringsAsFactors = FALSE)
+carriage<-import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/carr%20data.csv')
+#carriage <- read.csv("sdi/pneumo_master_carriage.csv",stringsAsFactors = FALSE)
 #The serotype 15 in carriage dataset has 2 rwos for 15B and 15C. Combine those rows.
 carriage_15BC <- carriage[c(which(carriage$ST == "15B"),which(carriage$ST == "15C")),]
 carriage_15BC <- data.frame(t(c("15B/C",colSums(carriage_15BC[2:ncol(carriage_15BC)]))))
@@ -23,7 +25,7 @@ carriage[,2:ncol(carriage)] <- as.integer(unlist(carriage[,2:ncol(carriage)]))
 carriage[is.na(carriage)] <- 0
 
 #Load the data containing sdi values for clusters and obtained from eBURST into the environment
-sdi_st <- read.csv("sdi/sdi_cc.csv")
+sdi_st <- read.csv("sdi_cc.csv")
 #Select columns with serotypes, SDI, and big_N
 sdi_st <- sdi_st[,c(2,3,5)]
 colnames(sdi_st) <- c("Serotype","SDI","Frequency")
@@ -39,7 +41,7 @@ p+coord_flip() + theme(panel.background = element_blank(), axis.line = element_l
 
 
 #Load polysaccharide composition data
-ps_composition <- read.csv("sdi/ps_composition.csv",stringsAsFactors = FALSE)
+ps_composition <- import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/PS%20Composition_SS_final.csv')
 #Fix the serotype names
 ps_composition$Serotype <- as.character(ps_composition$Serotype)
 ps_composition[which(ps_composition$Serotype == "15B"),1] <- "15B/C"
@@ -84,7 +86,10 @@ ps_composition$tr_sdi <- log(ps_composition$sdi/(1 - ps_composition$sdi))
 ps_composition$Carriage <- carriage$SLEEMANCARRN[match(ps_composition$Serotype,carriage$ST)]
 
 #Remove rows for which carriage values are NA
-ps_composition <- na.omit(ps_composition)
+##ps_composition <- na.omit(ps_composition)
+#Set carriage to 0 if it wasnt recorded in original study
+ps_composition$Carriage[is.na(ps_composition$Carriage)]<-0
+
 #ps_composition[is.na(ps_composition)] <- 0
 #ps_composition <- ps_composition[-which(ps_composition$tr_sdi == Inf),]
 #plot(ps_composition$sdi, ps_composition$Carriage)
@@ -104,12 +109,18 @@ reg.ace.nb1 <- vector("list", ncol(fdat2))
 aic.ace.nb1 <- 1: ncol(fdat2)
 pred.ace.nb1<-matrix(nrow = nrow(fdat2), ncol = ncol(fdat2))
 reg.coef.nb1 <- 1:ncol(fdat2)
+reg.coef.CI <- vector("list", ncol(fdat2)) 
+ps_composition$Serotype<-factor(ps_composition$Serotype)
+df<-1:ncol(fdat2)
 for (i in 1:ncol(fdat2)){
   if(nlevels(as.factor(fdat2[,i])) > 1){
-    reg.ace.nb1[[i]]<-glm(ps_composition$tr_sdi ~ ps_composition$Carriage + as.factor(fdat2[,i]),family = gaussian)
+    reg.ace.nb1[[i]]<-glm(ps_composition$tr_sdi ~ sqrt(ps_composition$Carriage) + fdat2[,i],family = gaussian)
     aic.ace.nb1[[i]]<-reg.ace.nb1[[i]]$aic
     pred.ace.nb1[,i]<-predict(reg.ace.nb1[[i]])
     reg.coef.nb1[[i]] <- reg.ace.nb1[i][[1]]$coefficients[3][[1]]
+    df[i]<-summary(reg.ace.nb1[[i]])$df[2]
+    sd<-summary(reg.ace.nb1[[i]])$coefficients[3,'Std. Error']
+    reg.coef.CI[[i]] <- c( (reg.coef.nb1[[i]] -1.96*sd) ,(reg.coef.nb1[[i]] +1.96*sd)) 
   }
   else{
     #AIC values cannot be calculated since there is only one level
@@ -134,8 +145,9 @@ wgt1_sugar <- wgt_sugar
 #wgt1_sugar[wgt1_sugar == wgt1_sugar[1]] <- 0
 pos1 <- colnames(fdat2)
 #Make a dataframe containing positions and weights
-ps_table <- data.frame(pos1,aic.ace.nb1,reg.coef.nb1) 
-names(ps_table) <- c("Component","AIC","Regression.Coefficient")
+reg.coef.CI<-do.call('rbind',reg.coef.CI)
+ps_table <- cbind.data.frame(pos1,aic.ace.nb1,reg.coef.nb1, reg.coef.CI) 
+names(ps_table) <- c("Component","AIC","Regression.Coefficient", '95%LCI','95%UCI')
 #Sort ps_table on the basis of aic values
 ps_table <- ps_table[order(ps_table$AIC),]
 tabular((Component + 1)~(n=1), AIC, Regression.Coefficient, ps_table)

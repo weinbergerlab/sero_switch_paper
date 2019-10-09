@@ -1,6 +1,7 @@
 rm(list=ls())
+setwd('C:/Users/dmw63/Desktop/My documents h/MLST Database/sero_switch_paper/shreyas_analysis_files/')
 #Load the prepped data file into the environment
-sero_st <- read.csv("data_prep/serotype_cluster_mat.csv")
+sero_st <- read.csv("./serotype_cluster_mat.csv")
 #Assign serotype names as row names
 rownames(sero_st) <- sero_st$X
 #Remove column containing the serotypes

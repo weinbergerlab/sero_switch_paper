@@ -56,51 +56,59 @@ ps1$Serotype[ps1$Serotype=='15B']<-'15B/C'
 Diversity analysis
 ```{r}
 sugs<-c("Ac","FucNAc" ,'Gal',"GalNAc",'Glc', "GlcA","GlcNAc",   "Gro","ManNAc",'Rha')
-diversity.func<-function(sug.list,ds){
+diversity.func<-function(ds){
   st.cc.diversity<- 1 -apply(ds[,-1], 1, function(x) sum((x/sum(x))^2) )
   st.cc.sum<- apply(ds[,-1], 1, function(x) sum(x ))
   st.cc.diversity<-cbind.data.frame('st'=ds[,1], st.cc.diversity,st.cc.sum)
-  st.cc.diversity<-st.cc.diversity[order(st.cc.diversity[,'st.cc.diversity']),]
-  st.cc.diversity<-merge(st.cc.diversity, carr1, by.x='st', by.y='ST', all=T)
+  st.cc.diversity<-st.cc.diversity[st.cc.sum>10,] #drop if <10 isolates in  database
+st.cc.diversity<-st.cc.diversity[order(st.cc.diversity[,'st.cc.diversity']),]
+  return(st.cc.diversity)
+}
+#Function to evauate correlations
+diversity.cor.func<-function(ds, sug.list){
+  st.cc.diversity<-merge(ds, carr1, by.x='st', by.y='ST', all=T)
   st.cc.diversity<-merge(st.cc.diversity, ps1, by.x='st', by.y='Serotype', all=T)
   st.cc.diversity$SLEEMANCARRN[is.na(st.cc.diversity$SLEEMANCARRN)]<-0
   st.cc.diversity$NORWAYCARR_PRE[is.na(st.cc.diversity$NORWAYCARR_PRE)]<-0
+  st.cc.diversity<-st.cc.diversity[!is.na(st.cc.diversity$st.cc.diversity),]
+  st.cc.diversity<-st.cc.diversity[!is.na(st.cc.diversity$Glc),]
   st.cc.diversity$st.cc.diversity[st.cc.diversity$st.cc.diversity==0]<-0.01
   st.cc.diversity$st.cc.diversity[st.cc.diversity$st.cc.diversity==1]<-0.99
   logit.diversity<- log(st.cc.diversity$st.cc.diversity/(1-st.cc.diversity$st.cc.diversity))
  # plot(logit.diversity, log(st.cc.diversity$st.cc.sum))
-form1<-as.formula(paste0('logit.diversity~ log(st.cc.sum) +', sug.list)    )
+form1<-as.formula(paste0('logit.diversity~ sqrt(SLEEMANCARRN) +', sug.list)    )
   mod1<-lm(form1, data=st.cc.diversity)
   summary(mod1)$df[2]
-  sug.est<-c('estimate'=summary(mod1)$coefficients[sug.list,'Estimate'], confint(mod1)[sug.list,])
-  AIC1<-AIC(mod1)
+  sug.est<-c('estimate'=round(summary(mod1)$coefficients[sug.list,'Estimate'],2), round(confint(mod1)[sug.list,],2))
+  AIC1<-round(AIC(mod1),1)
   df<-  summary(mod1)$df[2]
-  return(list('sug.est'=sug.est, 'AIC'=AIC1,'df'=df))
+  sdi.result<-c('AIC'=AIC1, sug.est,'df'=df)
+  return(sdi.result)
 }
 ```
 Diversity by CC
 ```{r}
-cc.div<-lapply(sugs, diversity.func, ds=cc1)
-cbind(sugs,sapply(cc.div, '[[', 'AIC'))
-cbind(sugs,t(sapply(cc.div, '[[', 'sug.est')))
-cbind(sugs,sapply(cc.div, '[[', 'df'))
+cc.sdi<-diversity.func(cc1)
+cc.div<-t(sapply(sugs, diversity.cor.func, ds=cc.sdi))
+cc.div<-cc.div[order(cc.div[,1]),]
+cc.div
+cc.sdi.format<- 
 ```
 
 Diversity by MLST
 ```{r}
-mlst.div<-lapply(sugs, diversity.func, ds=mlst1)
-cbind(sugs,sapply(mlst.div, '[[', 'AIC'))
-cbind(sugs,t(sapply(mlst.div, '[[', 'sug.est')))
-cbind(sugs,sapply(mlst.div, '[[', 'df'))
-
+mlst.sdi<-diversity.func(mlst1)
+mlst.div<-t(sapply(sugs, diversity.cor.func, ds=mlst.sdi))
+mlst.div<-mlst.div[order(mlst.div[,1]),]
+mlst.div
 ```
 
 Diversity by GPSC
 ```{r}
-gps.div<-lapply(sugs, diversity.func, ds=gps1.c)
-cbind(sugs,sapply(gps.div, '[[', 'AIC'))
-cbind(sugs,t(sapply(gps.div, '[[', 'sug.est')))
-cbind(sugs,sapply(gps.div, '[[', 'df'))
+gps.sdi<-diversity.func(gps1.c)
+gps.div<-t(sapply(sugs, diversity.cor.func, ds=gps.sdi))
+gps.div<-gps.div[order(gps.div[,1]),]
+gps.div
 
 ```
 
