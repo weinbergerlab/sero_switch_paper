@@ -15,6 +15,7 @@ library(readxl)
 library(htmlTable)
 library(arules)
 library(arulesViz)
+library(gridExtra)
 ```
 
 ##Read in main data
@@ -90,27 +91,78 @@ Diversity by CC
 ```{r}
 cc.sdi<-diversity.func(cc1)
 cc.div<-t(sapply(sugs, diversity.cor.func, ds=cc.sdi))
-cc.div<-cc.div[order(cc.div[,1]),]
-cc.div
-cc.sdi.format<- 
+cc.div.sort<-cc.div[order(cc.div[,1]),]
+cc.div.sort
+cc.sdi.format<- cbind.data.frame('Sugar'=row.names(cc.div),'Coefficient (CC)'=paste0(cc.div[,'estimate'],', (',cc.div[,'2.5 %'],',',cc.div[,'97.5 %'],')'), 'AIC'=cc.div[,'AIC']  )
 ```
 
 Diversity by MLST
 ```{r}
 mlst.sdi<-diversity.func(mlst1)
 mlst.div<-t(sapply(sugs, diversity.cor.func, ds=mlst.sdi))
-mlst.div<-mlst.div[order(mlst.div[,1]),]
-mlst.div
+mlst.div.sort<-mlst.div[order(mlst.div[,1]),]
+mlst.div.sort
+mlst.sdi.format<- cbind.data.frame('Sugar'=row.names(mlst.div),'Coefficient (MLST)'=paste0(mlst.div[,'estimate'],', (',mlst.div[,'2.5 %'],',',mlst.div[,'97.5 %'],')'))
 ```
 
 Diversity by GPSC
 ```{r}
-gps.sdi<-diversity.func(gps1.c)
-gps.div<-t(sapply(sugs, diversity.cor.func, ds=gps.sdi))
-gps.div<-gps.div[order(gps.div[,1]),]
-gps.div
+GPSC.sdi<-diversity.func(gps1.c)
+GPSC.div<-t(sapply(sugs, diversity.cor.func, ds=GPSC.sdi))
+GPSC.div.sort<-GPSC.div[order(GPSC.div[,1]),]
+GPSC.div.sort
+GPSC.sdi.format<- cbind.data.frame('Sugar'=row.names(GPSC.div),'Coefficient (GPSC)'=paste0(GPSC.div[,'estimate'],', (',GPSC.div[,'2.5 %'],',',GPSC.div[,'97.5 %'],')'))
 
 ```
+```{r, fig.width=8, fig.height=7}
+all.sdi<- merge(GPSC.sdi, mlst.sdi, by='st')
+all.sdi<-merge(all.sdi, cc.sdi, by='st')
+all.sdi<-all.sdi[order(all.sdi$st.cc.diversity),]
+#Plot the CC Diversity
+p1<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity)) +
+  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "Serotype", y='SDI CC')+
+coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
+  theme(legend.position = "none")
+#rownames(sdi_barplot) <- sdi_barplot$Serotype
+
+#GPSC
+p2<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity.x), y=st.cc.diversity.x)) +
+  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI GPSC')+
+ coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
+  theme(legend.position = "none")
+#rownames(sdi_barplot) <- sdi_barplot$Serotype
+
+#MLST
+p3<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity.y), y=st.cc.diversity.y)) +
+  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI MLST')+
+  coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
+  theme(legend.position = "none")
+#rownames(sdi_barplot) <- sdi_barplot$Serotype
+
+grid.arrange(p1, p2,p3, nrow = 1)
+
+#plot(x=all.sdi$st.cc.diversity, y=1:nrow(all.sdi), xlim=c(0,1), col='red', pch=16)
+#points(x=all.sdi$st.cc.diversity.x, y=1:nrow(all.sdi), col='blue',pch=17)
+#points(x=all.sdi$st.cc.diversity.y, y=1:nrow(all.sdi), col='black', pch=18)
+#plot(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.x)
+#plot(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.y)
+
+```
+
+
+## Summary table of Diversity analysis
+```{r}
+div.sum1<- merge(cc.sdi.format,mlst.sdi.format, by='Sugar')
+div.sum1<- merge(div.sum1,GPSC.sdi.format, by='Sugar')
+div.sum1<-div.sum1[order(div.sum1$AIC),]
+div.sum1$AIC <- NULL
+row.names(div.sum1)<- div.sum1$Sugar
+div.sum1$Sugar<-NULL
+table.div<-htmlTable(div.sum1, align='l',caption="Table 3. Association between the diversity of a serotype and the presence of specific sugars in the capsule, with diversity based on MLST, CC, or GPSC")
+print(table.div,type="html",useViewer=TRUE)
+table.div
+```
+
 
 Generate co-occurrence matrix. Count how often StA and StB occur on same CC/MLST/GPSC
 ```{r}

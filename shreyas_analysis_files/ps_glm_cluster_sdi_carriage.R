@@ -39,6 +39,7 @@ p<-ggplot(data=sdi_barplot, aes(x=reorder(Serotype,-SDI), y=SDI)) +
 p+coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) 
 #rownames(sdi_barplot) <- sdi_barplot$Serotype
 
+plot(sdi_st$SDI, sdi_st$Frequency)
 
 #Load polysaccharide composition data
 ps_composition <- import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/PS%20Composition_SS_final.csv')
