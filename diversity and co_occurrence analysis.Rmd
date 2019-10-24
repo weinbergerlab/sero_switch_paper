@@ -18,18 +18,30 @@ library(arulesViz)
 library(gridExtra)
 ```
 
+##Set threshold for minimum number of isolates on a CC or MLST
+```{r}
+min.n.isolates<-5
+```
+
+
 ##Read in main data
 Clonal cluster
 ```{r}
-cc1<-read.csv('./Data/serotype_cluster_mat.csv')
-names(cc1)[1]<-'st'
-
+cc1.original<-read.csv('./Data/serotype_cluster_mat.csv')
+names(cc1.original)[1]<-'st'
+cc1.original1<-as.matrix(cc1.original[,-1])
+cc1.original1[cc1.original1<min.n.isolates]<-0
+cc1<-cbind.data.frame('st'=cc1.original$st,cc1.original1)
 ```
 
 MLST
 ```{r}
-mlst1<-read.csv('./Data/serotype_mlst_mat.csv')
-names(mlst1)[1]<-'st'
+mlst1.original<-read.csv('./Data/serotype_mlst_mat.csv')
+names(mlst1.original)[1]<-'st'
+mlst1.original1<-as.matrix(mlst1.original[,-1])
+mlst1.original1[mlst1.original1<min.n.isolates]<-0
+mlst1<-cbind.data.frame('st'=mlst1.original$st,mlst1.original1)
+
 ```
 
 GPS
@@ -290,14 +302,14 @@ reg.func2<-function(ds2){
 mlst.tab<-reg.func2(mlst.co)
 names(mlst.tab)<-c('Poisson MLST', 'Logistic MLST')
 cc.tab<-reg.func2(cc.co)
-names(mlst.tab)<-c('Poisson CC', 'Logistic CC')
+names(cc.tab)<-c('Poisson CC', 'Logistic CC')
 gps.tab<-reg.func2(gps.co)
-names(mlst.tab)<-c('Poisson GPSC', 'Logistic GPSC')
+names(gps.tab)<-c('Poisson GPSC', 'Logistic GPSC')
 
 ```
 
 ```{r}
-combined.tab<-cbind( mlst.tab,cc.tab,gps.tab)
+combined.tab<-cbind( cc.tab,gps.tab)
 combined.tab$sugar<-NULL
 combined.tab$X<-NULL
 combined.tab<-combined.tab[c('both.glc','both.glcA','both.NAC','both.rha','both.gal','both.glcnac','both.gro','both.fucnac',
