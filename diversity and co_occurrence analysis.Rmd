@@ -16,6 +16,7 @@ library(htmlTable)
 library(arules)
 library(arulesViz)
 library(gridExtra)
+library(ggplot2)
 ```
 
 ##Read in main data
@@ -290,9 +291,9 @@ reg.func2<-function(ds2){
 mlst.tab<-reg.func2(mlst.co)
 names(mlst.tab)<-c('Poisson MLST', 'Logistic MLST')
 cc.tab<-reg.func2(cc.co)
-names(mlst.tab)<-c('Poisson CC', 'Logistic CC')
+names(cc.tab)<-c('Poisson CC', 'Logistic CC')
 gps.tab<-reg.func2(gps.co)
-names(mlst.tab)<-c('Poisson GPSC', 'Logistic GPSC')
+names(gps.tab)<-c('Poisson GPSC', 'Logistic GPSC')
 
 ```
 
