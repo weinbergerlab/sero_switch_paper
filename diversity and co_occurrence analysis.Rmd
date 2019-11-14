@@ -17,6 +17,7 @@ library(arules)
 library(arulesViz)
 library(gridExtra)
 library(ggplot2)
+library(abind)
 ```
 
 ##Read in main data
@@ -115,32 +116,46 @@ GPSC.div.sort
 GPSC.sdi.format<- cbind.data.frame('Sugar'=row.names(GPSC.div),'Coefficient (GPSC)'=paste0(GPSC.div[,'estimate'],', (',GPSC.div[,'2.5 %'],',',GPSC.div[,'97.5 %'],')'))
 
 ```
-```{r, fig.width=8, fig.height=7}
+```{r, fig.width=8, fig.height=4}
 all.sdi<- merge(GPSC.sdi, mlst.sdi, by='st')
 all.sdi<-merge(all.sdi, cc.sdi, by='st')
 all.sdi<-all.sdi[order(all.sdi$st.cc.diversity),]
 #Plot the CC Diversity
+
+#MLST vs CC
+set.seed(123)
+par(mfrow=c(1,2))
+symbols(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.y,circles=sqrt(all.sdi$st.cc.sum+all.sdi$st.cc.sum.y), inches=0.25, bty='l', xlab='Serotype Diversity (CC)' ,ylab='Serotype Diversity (MLST)', fg='grey')
+text(all.sdi$st.cc.diversity, (all.sdi$st.cc.diversity.y+rnorm(mean=0,sd=0.02, n=nrow(all.sdi))), all.sdi$st, col='black', cex=0.5, adj=c(1,1))
+#CC vs GPSC
+symbols(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.x,circles=sqrt(all.sdi$st.cc.sum+all.sdi$st.cc.sum.x), inches=0.25, bty='l', xlab='Serotype Diversity (CC)' ,ylab='Serotype Diversity (GPSC)', fg='grey')
+text(all.sdi$st.cc.diversity, (all.sdi$st.cc.diversity.x+rnorm(mean=0,sd=0.02, n=nrow(all.sdi))), all.sdi$st, col='black', cex=0.5, adj=c(1,1))
+
+#CC
 p1<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity)) +
   geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "Serotype", y='SDI CC')+
 coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
   theme(legend.position = "none")
 #rownames(sdi_barplot) <- sdi_barplot$Serotype
 
-#GPSC
-p2<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity.x), y=st.cc.diversity.x)) +
-  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI GPSC')+
- coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
-  theme(legend.position = "none")
-#rownames(sdi_barplot) <- sdi_barplot$Serotype
-
 #MLST
-p3<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity.y), y=st.cc.diversity.y)) +
+p3<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity.y)) +
   geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI MLST')+
   coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
   theme(legend.position = "none")
 #rownames(sdi_barplot) <- sdi_barplot$Serotype
 
-grid.arrange(p1, p2,p3, nrow = 1)
+
+#GPSC
+p2<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity.x)) +
+  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI GPSC')+
+ coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
+  theme(legend.position = "none")
+#rownames(sdi_barplot) <- sdi_barplot$Serotype
+
+
+
+#grid.arrange(p1, p2,p3, nrow = 1)
 
 #plot(x=all.sdi$st.cc.diversity, y=1:nrow(all.sdi), xlim=c(0,1), col='red', pch=16)
 #points(x=all.sdi$st.cc.diversity.x, y=1:nrow(all.sdi), col='blue',pch=17)
@@ -163,6 +178,26 @@ table.div<-htmlTable(div.sum1, align='l',caption="Table 3. Association between t
 print(table.div,type="html",useViewer=TRUE)
 table.div
 ```
+Or a figure of the same
+```{r}
+reg.array<-abind(cc.div, mlst.div, GPSC.div, along=3)
+dimnames(reg.array)[[3]]<-c('cc','mlst','gpsc')
+reg.array<-reg.array[order(reg.array[,'AIC','cc']),,]
+plot(reg.array[1:dim(reg.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=range(reg.array[,c("estimate", "2.5 %","97.5 %"),]), ylab='Coefficient', xaxt='n', xlab='')
+points(((1:dim(reg.array)[1]+0.15)),reg.array[,'estimate','mlst'], pch=17, col='#377eb8')
+points(((1:dim(reg.array)[1]+0.3)),reg.array[,'estimate','gpsc'], pch=18, col='#4daf4a')
+
+arrows(x0=1:dim(reg.array)[1],y0=reg.array[,"2.5 %",'cc'],y1=reg.array[,"97.5 %",'cc'], pch=16, col='#e41a1c', length=0)
+arrows(x0=((1:dim(reg.array)[1]+0.15)),y0=reg.array[,"2.5 %",'mlst'],y1=reg.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
+arrows(x0=((1:dim(reg.array)[1]+0.3)),y0=reg.array[,"2.5 %",'gpsc'],y1=reg.array[,"97.5 %",'gpsc'], pch=16, col='#4daf4a', length=0)
+
+abline(h=0, lty=2, col='gray')
+text(1:10, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray', cex=0.75)
+legend("topright", legend=c("CC", "MLST", "GPSC"),
+       col=c("#e41a1c", "#377eb8", "#4daf4a"), pch=c(16,17,18), box.lty=0)
+
+```
+
 
 
 Generate co-occurrence matrix. Count how often StA and StB occur on same CC/MLST/GPSC
@@ -275,24 +310,30 @@ reg.func2<-function(ds2){
   
   binomial.res<-do.call('rbind', binomial.list)
   binomial.res<-round(binomial.res, 2)
-  binomial.res<-apply(binomial.res,1, function(x) paste0(x['estimate'] ," (",x['2.5 %'], ',',x['97.5 %']  ,")") )
+  binomial.res.format<-apply(binomial.res,1, function(x) paste0(x['estimate'] ," (",x['2.5 %'], ',',x['97.5 %']  ,")") )
   
   poisson.res<-do.call('rbind', poisson.list)
   poisson.res<-round(poisson.res, 2)
-  poisson.res<-apply(poisson.res,1, function(x) paste0(x['estimate'] ," (",x['2.5 %'], ',',x['97.5 %']  ,")") )
+  poisson.res.format<-apply(poisson.res,1, function(x) paste0(x['estimate'] ," (",x['2.5 %'], ',',x['97.5 %']  ,")") )
   
-  out.tab <- cbind.data.frame(poisson.res, binomial.res)
+  out.tab <- cbind.data.frame(poisson.res.format, binomial.res.format)
   names(out.tab)<-c('Poisson', 'Logistic')
-  return(out.tab)
+  outlist<-list('out.tab.formatted'=out.tab,'binomial.res'=binomial.res,'poisson.res'=poisson.res )
+  return(outlist)
 }
 ```
 
 ```{r}
-mlst.tab<-reg.func2(mlst.co)
+mlst.mod<-reg.func2(mlst.co)
+mlst.tab<-mlst.mod$out.tab.formatted
 names(mlst.tab)<-c('Poisson MLST', 'Logistic MLST')
-cc.tab<-reg.func2(cc.co)
+
+cc.mod<-reg.func2(cc.co)
+cc.tab<-cc.mod$out.tab.formatted
 names(cc.tab)<-c('Poisson CC', 'Logistic CC')
-gps.tab<-reg.func2(gps.co)
+
+gps.mod<-reg.func2(gps.co)
+gps.tab<-gps.mod$out.tab.formatted
 names(gps.tab)<-c('Poisson GPSC', 'Logistic GPSC')
 
 ```
@@ -307,6 +348,39 @@ row.names(combined.tab)<-c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','F
 table1<-htmlTable(combined.tab, align='l',caption="Table 1. Association between the presence of specific sugars in the capsule and co-occurrence of serotype pairs on the same genetic background (MLST, CC, or GPSC). ")
 print(table1,type="html",useViewer=TRUE)
 ```
+
+Figure of table 1
+```{r, fig.width=8, fig.height=5}
+combined.array.bin<- abind(mlst.mod$binomial.res,cc.mod$binomial.res, gps.mod$binomial.res, along=3 )
+combined.array.pois<- abind(mlst.mod$poisson.res,cc.mod$poisson.res, gps.mod$poisson.res, along=3 )
+combined.array<-abind(combined.array.bin,combined.array.pois, along=4)
+dimnames(combined.array)[[3]]<-c('mlst','cc','gps')
+dimnames(combined.array)[[4]]<-c('binomial','poisson')
+combined.array<-combined.array[c('both.glc','both.glcA','both.NAC','both.rha','both.gal','both.glcnac','both.gro','both.fucnac',
+                             'both.ribol','both.mannac'),,,]
+ models<-c('binomial', 'poisson')
+  model.labs<-c('Logistic Regression', 'Poisson Regression')
+par(mfrow=c(1,2))
+for(i in 1:2){
+ 
+plot.array<-combined.array[,,,models[i]]
+plotrange<-range(plot.array[,c("estimate", "2.5 %","97.5 %"),])
+plotrange[plotrange>3]<-3
+plot(plot.array[1:dim(plot.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=c(-1,2), ylab=paste0(model.labs[i],' Coefficient'), xaxt='n', xlab='')
+points(((1:dim(plot.array)[1]+0.15)),plot.array[,'estimate','mlst'], pch=17, col='#377eb8')
+points(((1:dim(plot.array)[1]+0.3)),plot.array[,'estimate','gps'], pch=18, col='#4daf4a')
+
+arrows(x0=1:dim(plot.array)[1],y0=plot.array[,"2.5 %",'cc'],y1=plot.array[,"97.5 %",'cc'], pch=16, col='#e41a1c', length=0)
+arrows(x0=((1:dim(plot.array)[1]+0.15)),y0=plot.array[,"2.5 %",'mlst'],y1=plot.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
+arrows(x0=((1:dim(plot.array)[1]+0.3)),y0=plot.array[,"2.5 %",'gps'],y1=plot.array[,"97.5 %",'gps'], pch=16, col='#4daf4a', length=0)
+
+abline(h=0, lty=2, col='gray')
+text(1:10, y=-1, c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc'), pos=4, offset=0, xpd=NA, col='gray', cex=0.75, srt=90)
+legend(1.1,2, legend=c("CC", "MLST", "GPSC"),
+       col=c("#e41a1c", "#377eb8", "#4daf4a"), pch=c(16,17,18), box.lty=0, adj=c(0.1, 0.5))
+}
+```
+
 
 ##Market basket analysis
 ```{r}
