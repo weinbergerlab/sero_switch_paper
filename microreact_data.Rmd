@@ -1,0 +1,100 @@
+---
+title: "Microreact"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r ,setup}
+library(httr)
+library(phylogram)
+library(dendextend)
+```
+
+Download all files from microreact. Not all the GPSC seem to have a microreact project associated. the subset below all had files.
+```{r}
+gpcs<-c(1:27,30:34, 37:41, 43, 47:48, 50:58, 61:62,67:68,70,72, 76,78, 79,80,81,90,91,93, 94,97,103,105,117, 131)
+# for(i in gpcs){
+# path <- paste0("https://microreact.org/api/viewer/tree?project=gpsGPSC",i)
+# path2<-paste0("https://microreact.org/api/viewer/data?project=gpsGPSC",i)
+# download.file(path2, destfile=paste0("microreact/data_gpcs",i,".csv"))
+# download.file(path, destfile=paste0("microreact/tree_gpcs",i,".nwk"))
+# }
+```
+
+### Read in all trees and save in a list
+```{r}
+trees <- vector("list",length(gpcs))
+
+for(i in 1:length(gpcs)){
+  trees[[i]]<-read.dendrogram(paste0("microreact/tree_gpcs",gpcs[i],".nwk"))
+  #trees[[i]]<-read.dendrogram(nwk1)
+}  
+```
+
+###Import the metadata
+```{r}
+metads <- vector("list",length(gpcs))
+
+for(i in 1:length(gpcs)){
+  metads[[i]]<-read.csv(paste0("microreact/data_gpcs",gpcs[i],".csv"))
+  #trees[[i]]<-read.dendrogram(nwk1)
+} 
+```
+
+```{r}
+for(i in 1:10){
+  plot(trees[[i]], ylim=c(0,1000))
+}
+```
+
+#classify the samples based on a cutpoint
+```{r}
+tree.cutter<-function(tree.list, cutpoint){
+  test1<-as_hclust_fixed(tree.list)
+  test2<-cutree(test1, h=cutpoint)
+  test3<-as.data.frame(test2)
+  names(test3)<-'tree.grp'
+  test3$ID<-row.names(test3)
+  return(test3)
+}
+tree.grps100<-lapply(trees,tree.cutter,cutpoint=100)
+tree.grps200<-lapply(trees,tree.cutter,cutpoint=200)
+tree.grps300<-lapply(trees,tree.cutter,cutpoint=300)
+
+```
+
+#Merge in with meta data
+```{r}
+metads<-lapply(metads, function(x){
+  x$ID<-as.character(x$ID)
+  return(x)
+ })
+
+meta.merge<-function(tree.ds, meta.ds){
+  test1<-merge(tree.ds, meta.ds, by='ID')
+  test1$phylo.grp<-paste(test1$GPSC, test1$tree.grp, sep='_')
+  test1$In_Silico_Serotype<-as.character(test1$In_Silico_Serotype)
+  test1<-test1[,c('phylo.grp','In_Silico_Serotype' )]
+  return(test1)
+}
+grp.assign100<-mapply(meta.merge,tree.ds=tree.grps100, meta.ds=metads , SIMPLIFY=F)
+grp.assign200<-mapply(meta.merge,tree.ds=tree.grps200, meta.ds=metads , SIMPLIFY=F)
+grp.assign300<-mapply(meta.merge,tree.ds=tree.grps300, meta.ds=metads , SIMPLIFY=F)
+
+phylo.grps100<- do.call('rbind.data.frame',grp.assign100)
+phylo.grps200<- do.call('rbind.data.frame',grp.assign200)
+phylo.grps300<- do.call('rbind.data.frame',grp.assign300)
+
+write.csv(phylo.grps100, 'phylo.grps100.csv')
+write.csv(phylo.grps200, 'phylo.grps200.csv')
+write.csv(phylo.grps300, 'phylo.grps300.csv')
+
+```
+
+
+
+
+

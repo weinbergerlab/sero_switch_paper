@@ -18,6 +18,7 @@ library(arulesViz)
 library(gridExtra)
 library(ggplot2)
 library(abind)
+library(ggrepel)
 ```
 
 ##Read in main data
@@ -40,10 +41,41 @@ gps1<-read_excel('./Data/gladstone gps.xlsx',guess_max=10000)
 gps1<-gps1[,c('In_Silico_Serotype', 'GPSC')]
 names(gps1)<-c('st','SC')
 gps1$count<-1
+gps1$st[gps1$st=='15BC']<-'15B/C'
 gps1.m<-melt(gps1, id.vars=c('st','SC'))
 gps1.c<- dcast(gps1.m,st~SC,fun.aggregate = sum )
-gps1.c$st[gps1.c$st=='15BC']<-'15B/C'
 ```
+
+Phylogenetic tree based groupings from GPSC. These data are downloaded and processed in the file microreact_data.Rmd. We evaluate 3 different cut points for grouping on the phylogenetic tree; at 100, 200 and 300. 100 results in more groups, and is more stringest, 300 is a broader grouping and less stringent (but still more stringent than GPSC)
+```{r}
+phylo100<-read.csv('phylo.grps100.csv')
+phylo100<-phylo100[,c('In_Silico_Serotype','phylo.grp' )]
+names(phylo100)<-c('st','PG')
+phylo100$st<-as.character(phylo100$st)
+phylo100$count=1
+phylo100$st[phylo100$st=='15BC']<-'15B/C'
+phylo100.m<-melt(phylo100, id.vars=c('st','PG'))
+phylo100.c<- dcast(phylo100.m,st~PG,fun.aggregate = sum )
+
+phylo200<-read.csv('phylo.grps200.csv')
+phylo200<-phylo200[,c('In_Silico_Serotype','phylo.grp' )]
+names(phylo200)<-c('st','PG')
+phylo200$st<-as.character(phylo200$st)
+phylo200$count=1
+phylo200$st[phylo200$st=='15BC']<-'15B/C'
+phylo200.m<-melt(phylo200, id.vars=c('st','PG'))
+phylo200.c<- dcast(phylo200.m,st~PG,fun.aggregate = sum )
+
+phylo300<-read.csv('phylo.grps300.csv')
+phylo300<-phylo300[,c('In_Silico_Serotype','phylo.grp' )]
+names(phylo300)<-c('st','PG')
+phylo300$st<-as.character(phylo300$st)
+phylo300$count=1
+phylo300$st[phylo300$st=='15BC']<-'15B/C'
+phylo300.m<-melt(phylo300, id.vars=c('st','PG'))
+phylo300.c<- dcast(phylo300.m,st~PG,fun.aggregate = sum )
+```
+
 
 ##Read in auxillary data
 ```{r cars}
@@ -53,12 +85,13 @@ carr1<-aggregate(carr1[,-1], by=list('ST'=carr1$ST), FUN=sum)
 
 ps1<-import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/PS%20Composition_SS_final.csv')
 ps1$Serotype[ps1$Serotype=='15B']<-'15B/C'
-
+ps1$any.nac<-apply(ps1[,c('FucNAc','GalNAc', 'ManNAc', 'ManNAcA','PneNAc', 'GlcNAc')], 1,sum)
+ps1$any.nac<-(ps1$any.nac>0)*1
 ```
 
 Diversity analysis
 ```{r}
-sugs<-c("Ac","FucNAc" ,'Gal',"GalNAc",'Glc', "GlcA","GlcNAc",   "Gro","ManNAc",'Rha')
+sugs<-c("Ac","FucNAc" ,'Gal',"GalNAc",'Glc', "GlcA","GlcNAc",   "Gro","ManNAc",'Rha','any.nac')
 diversity.func<-function(ds){
   st.cc.diversity<- 1 -apply(ds[,-1], 1, function(x) sum((x/sum(x))^2) )
   st.cc.sum<- apply(ds[,-1], 1, function(x) sum(x ))
@@ -116,54 +149,106 @@ GPSC.div.sort
 GPSC.sdi.format<- cbind.data.frame('Sugar'=row.names(GPSC.div),'Coefficient (GPSC)'=paste0(GPSC.div[,'estimate'],', (',GPSC.div[,'2.5 %'],',',GPSC.div[,'97.5 %'],')'))
 
 ```
+
+Diversity by Phylo
+```{r}
+phylo.sdi100<-diversity.func(phylo100.c)
+phylo.div100<-t(sapply(sugs, diversity.cor.func, ds=phylo.sdi100))
+phylo.div.sort100<-phylo.div100[order(phylo.div100[,1]),]
+phylo.div.sort100
+phylo.sdi.format100<- cbind.data.frame('Sugar'=row.names(phylo.div100),'Coefficient (phylo100)'=paste0(phylo.div100[,'estimate'],', (',phylo.div100[,'2.5 %'],',',phylo.div100[,'97.5 %'],')'))
+
+phylo.sdi200<-diversity.func(phylo200.c)
+phylo.div200<-t(sapply(sugs, diversity.cor.func, ds=phylo.sdi200))
+phylo.div.sort200<-phylo.div200[order(phylo.div200[,1]),]
+phylo.div.sort200
+phylo.sdi.format200<- cbind.data.frame('Sugar'=row.names(phylo.div200),'Coefficient (phylo200)'=paste0(phylo.div200[,'estimate'],', (',phylo.div200[,'2.5 %'],',',phylo.div200[,'97.5 %'],')'))
+
+phylo.sdi300<-diversity.func(phylo300.c)
+phylo.div300<-t(sapply(sugs, diversity.cor.func, ds=phylo.sdi300))
+phylo.div.sort300<-phylo.div300[order(phylo.div300[,1]),]
+phylo.div.sort300
+phylo.sdi.format300<- cbind.data.frame('Sugar'=row.names(phylo.div300),'Coefficient (phylo300)'=paste0(phylo.div300[,'estimate'],', (',phylo.div300[,'2.5 %'],',',phylo.div300[,'97.5 %'],')'))
+
+
+cbind(phylo.sdi.format100,phylo.sdi.format200[,2],phylo.sdi.format300[,2])
+```
+
+
 ```{r, fig.width=8, fig.height=4}
-all.sdi<- merge(GPSC.sdi, mlst.sdi, by='st')
-all.sdi<-merge(all.sdi, cc.sdi, by='st')
-all.sdi<-all.sdi[order(all.sdi$st.cc.diversity),]
+names(GPSC.sdi)<-c('st','sdi.gps','N.gps')
+names(mlst.sdi)<-c('st','sdi.mlst','N.mlst')
+names(cc.sdi)<-c('st','sdi.cc','N.cc')
+#names(phylo.sdi100)<-c('st','sdi.phylo100','N.phylo100')
+
+all.sdi<- merge(GPSC.sdi, mlst.sdi, by='st', all=T)
+all.sdi<-merge(all.sdi, cc.sdi, by='st', all=T)
+write.csv(all.sdi,'SDI.by.serotype.csv')
+
+all.sdi<-all.sdi[order(all.sdi$sdi.cc),]
 #Plot the CC Diversity
 
 #MLST vs CC
-set.seed(123)
-par(mfrow=c(1,2))
-symbols(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.y,circles=sqrt(all.sdi$st.cc.sum+all.sdi$st.cc.sum.y), inches=0.25, bty='l', xlab='Serotype Diversity (CC)' ,ylab='Serotype Diversity (MLST)', fg='grey')
-text(all.sdi$st.cc.diversity, (all.sdi$st.cc.diversity.y+rnorm(mean=0,sd=0.02, n=nrow(all.sdi))), all.sdi$st, col='black', cex=0.5, adj=c(1,1))
-#CC vs GPSC
-symbols(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.x,circles=sqrt(all.sdi$st.cc.sum+all.sdi$st.cc.sum.x), inches=0.25, bty='l', xlab='Serotype Diversity (CC)' ,ylab='Serotype Diversity (GPSC)', fg='grey')
-text(all.sdi$st.cc.diversity, (all.sdi$st.cc.diversity.x+rnorm(mean=0,sd=0.02, n=nrow(all.sdi))), all.sdi$st, col='black', cex=0.5, adj=c(1,1))
-
-#CC
-p1<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity)) +
-  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "Serotype", y='SDI CC')+
-coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
-  theme(legend.position = "none")
-#rownames(sdi_barplot) <- sdi_barplot$Serotype
-
+all.sdi$st.common<-all.sdi$st
+all.sdi$st.common[all.sdi$N.cc<200] <- NA
 #MLST
-p3<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity.y)) +
-  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI MLST')+
-  coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
-  theme(legend.position = "none")
-#rownames(sdi_barplot) <- sdi_barplot$Serotype
-
-
+p1<-ggplot(data=all.sdi, aes(x=sdi.cc, y=sdi.mlst)) +
+  geom_text_repel(size=3,aes(label=all.sdi$st.common ), colour='gray70')+
+  geom_point(alpha=0.5, colour='black',aes(size=c(all.sdi$N.cc+all.sdi$N.mlst) ))+
+  scale_size_area()+
+  theme(panel.grid.major = element_blank(),legend.position = "none", panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  xlab("Serotype Diversity (CC)")+
+  ylab('Serotype Diversity (MLST)')
 #GPSC
-p2<-ggplot(data=all.sdi, aes(x=reorder(st,-st.cc.diversity), y=st.cc.diversity.x)) +
-  geom_point(alpha = 0.5, aes(size = st.cc.sum)) + labs(x = "", y='SDI GPSC')+
- coord_flip() + theme(panel.background = element_blank(), axis.line = element_line(size = 0.5), axis.text = element_text(face = "bold")) +
-  theme(legend.position = "none")
-#rownames(sdi_barplot) <- sdi_barplot$Serotype
-
-
-
-#grid.arrange(p1, p2,p3, nrow = 1)
-
-#plot(x=all.sdi$st.cc.diversity, y=1:nrow(all.sdi), xlim=c(0,1), col='red', pch=16)
-#points(x=all.sdi$st.cc.diversity.x, y=1:nrow(all.sdi), col='blue',pch=17)
-#points(x=all.sdi$st.cc.diversity.y, y=1:nrow(all.sdi), col='black', pch=18)
-#plot(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.x)
-#plot(all.sdi$st.cc.diversity, all.sdi$st.cc.diversity.y)
-
+p2<-ggplot(data=all.sdi, aes(x=sdi.cc, y=sdi.gps)) +
+  geom_text_repel(size=3,aes(label=all.sdi$st.common) , colour='gray70')+
+  geom_point(alpha=0.5, colour='black',aes(size=c(all.sdi$N.cc+all.sdi$N.gps) ))+
+  scale_size_area()+
+  theme(panel.grid.major = element_blank(),legend.position = "none", panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  xlab("Serotype Diversity (CC)")+
+  ylab('Serotype Diversity (GPSC)')
+grid.arrange(p1, p2, nrow = 1)
 ```
+
+Plots with phylo samples. This shows that with a cutoff of 100, everything is super diver, which makes sense because this is a very sensivite definition for splitting groups, resulting in lots of groups, even if closely related.200 and 300 look similar
+```{r}
+names(phylo.sdi100)<-c('st','phylo.div.100','N.div.100')
+names(phylo.sdi200)<-c('st','phylo.div.200','N.div.200')
+names(phylo.sdi300)<-c('st','phylo.div.300','N.div.300')
+
+all.sdi.phylo<-merge(phylo.sdi100, all.sdi, by='st', all=T)
+all.sdi.phylo<-merge(phylo.sdi200, all.sdi.phylo, by='st', all=T)
+all.sdi.phylo<-merge(phylo.sdi300, all.sdi.phylo, by='st', all=T)
+
+all.sdi.phylo<-all.sdi.phylo[order(all.sdi.phylo$sdi.cc),]
+
+#phylo100
+p1<-ggplot(data=all.sdi.phylo, aes(x=sdi.cc, y=phylo.div.100)) +
+  geom_text_repel(size=3,aes(label=all.sdi$st.common ), colour='gray70')+
+  geom_point(alpha=0.5, colour='black',aes(size=c(all.sdi$N.cc+all.sdi$N.mlst) ))+
+  scale_size_area()+
+  theme(panel.grid.major = element_blank(),legend.position = "none", panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  xlab("Serotype Diversity (CC)")+
+  ylab('Serotype Diversity (Phylo100)')
+#phylo200
+p2<-ggplot(data=all.sdi.phylo, aes(x=sdi.cc, y=phylo.div.200)) +
+  geom_text_repel(size=3,aes(label=all.sdi$st.common ), colour='gray70')+
+  geom_point(alpha=0.5, colour='black',aes(size=c(all.sdi$N.cc+all.sdi$N.mlst) ))+
+  scale_size_area()+
+  theme(panel.grid.major = element_blank(),legend.position = "none", panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  xlab("Serotype Diversity (CC)")+
+  ylab('Serotype Diversity (Phylo200)')
+#Phylo300
+p3<-ggplot(data=all.sdi.phylo, aes(x=sdi.cc, y=phylo.div.300)) +
+  geom_text_repel(size=3,aes(label=all.sdi$st.common) , colour='gray70')+
+  geom_point(alpha=0.5, colour='black',aes(size=c(all.sdi$N.cc+all.sdi$N.gps) ))+
+  scale_size_area()+
+  theme(panel.grid.major = element_blank(),legend.position = "none", panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  xlab("Serotype Diversity (CC)")+
+  ylab('Serotype Diversity (Phylo300)')
+grid.arrange(p1, p2, p3, nrow = 1)
+```
+
 
 
 ## Summary table of Diversity analysis
@@ -197,8 +282,24 @@ legend("topright", legend=c("CC", "MLST", "GPSC"),
        col=c("#e41a1c", "#377eb8", "#4daf4a"), pch=c(16,17,18), box.lty=0)
 
 ```
+Same, but also include the phylo results
+```{r}
+reg.array<-abind(cc.div, mlst.div, GPSC.div,phylo.div100, along=3)
+dimnames(reg.array)[[3]]<-c('cc','mlst','gpsc')
+reg.array<-reg.array[order(reg.array[,'AIC','cc']),,]
+plot(reg.array[1:dim(reg.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=range(reg.array[,c("estimate", "2.5 %","97.5 %"),]), ylab='Coefficient', xaxt='n', xlab='')
+points(((1:dim(reg.array)[1]+0.15)),reg.array[,'estimate','mlst'], pch=17, col='#377eb8')
+points(((1:dim(reg.array)[1]+0.3)),reg.array[,'estimate','gpsc'], pch=18, col='#4daf4a')
 
+arrows(x0=1:dim(reg.array)[1],y0=reg.array[,"2.5 %",'cc'],y1=reg.array[,"97.5 %",'cc'], pch=16, col='#e41a1c', length=0)
+arrows(x0=((1:dim(reg.array)[1]+0.15)),y0=reg.array[,"2.5 %",'mlst'],y1=reg.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
+arrows(x0=((1:dim(reg.array)[1]+0.3)),y0=reg.array[,"2.5 %",'gpsc'],y1=reg.array[,"97.5 %",'gpsc'], pch=16, col='#4daf4a', length=0)
 
+abline(h=0, lty=2, col='gray')
+text(1:10, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray', cex=0.75)
+legend("topright", legend=c("CC", "MLST", "GPSC"),
+       col=c("#e41a1c", "#377eb8", "#4daf4a"), pch=c(16,17,18), box.lty=0)
+```
 
 Generate co-occurrence matrix. Count how often StA and StB occur on same CC/MLST/GPSC
 ```{r}
@@ -284,6 +385,14 @@ Format the data for regression
 mlst.co<-co.occur.func(mlst1)
 cc.co<-co.occur.func(cc1)
 gps.co<-co.occur.func(gps1.c)
+phylo100.co<-co.occur.func(phylo100.c)
+phylo200.co<-co.occur.func(phylo200.c)
+phylo300.co<-co.occur.func(phylo300.c)
+
+write.csv(mlst.co[,c('Sero1','Sero2','ccN','mlstN.x','mlstN.y','same.sg','both.glcA','both.gal','both.glc','both.glcnac','both.ac','both.rha','both.gro','both.ribol','both.cho','both.fucnac','both.mannac','both.NAC' )],'co.occurrence.mlst.csv')
+write.csv(cc.co[,c('Sero1','Sero2','ccN','mlstN.x','mlstN.y','same.sg','both.glcA','both.gal','both.glc','both.glcnac','both.ac','both.rha','both.gro','both.ribol','both.cho','both.fucnac','both.mannac','both.NAC' )],'co.occurrence.cc.csv')
+write.csv(gps.co[,c('Sero1','Sero2','ccN','mlstN.x','mlstN.y','same.sg','both.glcA','both.gal','both.glc','both.glcnac','both.ac','both.rha','both.gro','both.ribol','both.cho','both.fucnac','both.mannac','both.NAC' )],'co.occurrence.gps.csv')
+
 ```
 
 ```{r}
@@ -337,6 +446,24 @@ gps.tab<-gps.mod$out.tab.formatted
 names(gps.tab)<-c('Poisson GPSC', 'Logistic GPSC')
 
 ```
+Model with phylogenetic groups. Model for data with cut at 100 doesn't run 
+```{r}
+# phylo100.mod<-reg.func2(phylo100.co)
+# phylo100.tab<-phylo.mod$out.tab.formatted
+# names(phylo100.tab)<-c('Poisson Phylo100', 'Logistic Phylo100')
+# phylo100.tab
+
+phylo200.mod<-reg.func2(phylo200.co)
+phylo200.tab<-phylo200.mod$out.tab.formatted
+names(phylo200.tab)<-c('Poisson Phylo200', 'Logistic Phylo200')
+phylo200.tab
+
+phylo300.mod<-reg.func2(phylo300.co)
+phylo300.tab<-phylo300.mod$out.tab.formatted
+names(phylo300.tab)<-c('Poisson Phylo300', 'Logistic Phylo300')
+phylo300.tab
+```
+
 
 ```{r}
 combined.tab<-cbind( mlst.tab,cc.tab,gps.tab)
@@ -349,8 +476,8 @@ table1<-htmlTable(combined.tab, align='l',caption="Table 1. Association between 
 print(table1,type="html",useViewer=TRUE)
 ```
 
-Figure of table 1
-```{r, fig.width=8, fig.height=5}
+Figure of table 1 (Figure 2)
+```{r, fig.width=8, fig.height=4}
 combined.array.bin<- abind(mlst.mod$binomial.res,cc.mod$binomial.res, gps.mod$binomial.res, along=3 )
 combined.array.pois<- abind(mlst.mod$poisson.res,cc.mod$poisson.res, gps.mod$poisson.res, along=3 )
 combined.array<-abind(combined.array.bin,combined.array.pois, along=4)
@@ -366,13 +493,13 @@ for(i in 1:2){
 plot.array<-combined.array[,,,models[i]]
 plotrange<-range(plot.array[,c("estimate", "2.5 %","97.5 %"),])
 plotrange[plotrange>3]<-3
-plot(plot.array[1:dim(plot.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=c(-1,2), ylab=paste0(model.labs[i],' Coefficient'), xaxt='n', xlab='')
-points(((1:dim(plot.array)[1]+0.15)),plot.array[,'estimate','mlst'], pch=17, col='#377eb8')
-points(((1:dim(plot.array)[1]+0.3)),plot.array[,'estimate','gps'], pch=18, col='#4daf4a')
+plot(plot.array[1:dim(plot.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=c(-1,2), ylab=paste0(model.labs[i],' Coefficient'), xaxt='n', xlab='', xlim=c(0.9,dim(plot.array)[1]+0.55))
+points(((1:dim(plot.array)[1]+0.25)),plot.array[,'estimate','mlst'], pch=17, col='#377eb8')
+points(((1:dim(plot.array)[1]+0.5)),plot.array[,'estimate','gps'], pch=18, col='#4daf4a')
 
 arrows(x0=1:dim(plot.array)[1],y0=plot.array[,"2.5 %",'cc'],y1=plot.array[,"97.5 %",'cc'], pch=16, col='#e41a1c', length=0)
-arrows(x0=((1:dim(plot.array)[1]+0.15)),y0=plot.array[,"2.5 %",'mlst'],y1=plot.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
-arrows(x0=((1:dim(plot.array)[1]+0.3)),y0=plot.array[,"2.5 %",'gps'],y1=plot.array[,"97.5 %",'gps'], pch=16, col='#4daf4a', length=0)
+arrows(x0=((1:dim(plot.array)[1]+0.25)),y0=plot.array[,"2.5 %",'mlst'],y1=plot.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
+arrows(x0=((1:dim(plot.array)[1]+0.5)),y0=plot.array[,"2.5 %",'gps'],y1=plot.array[,"97.5 %",'gps'], pch=16, col='#4daf4a', length=0)
 
 abline(h=0, lty=2, col='gray')
 text(1:10, y=-1, c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc'), pos=4, offset=0, xpd=NA, col='gray', cex=0.75, srt=90)
