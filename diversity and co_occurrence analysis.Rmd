@@ -261,7 +261,7 @@ combined.tab$sugar<-NULL
 combined.tab$X<-NULL
 combined.tab<-combined.tab[c('both.glc','both.glcA','both.NAC','both.rha','both.gal','both.glcnac','both.gro','both.fucnac',
                              'both.ribol','both.mannac'), ]
-row.names(combined.tab)<-c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc')
+row.names(combined.tab)<-c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Ribitol','ManNAc')
 table1<-htmlTable(combined.tab, align='l',caption="Table 1. Association between the presence of specific sugars in the capsule and co-occurrence of serotype pairs on the same genetic background (MLST, CC, or GPSC). ")
 print(table1,type="html",useViewer=TRUE)
 ```
@@ -303,7 +303,7 @@ arrows(x0=((1:dim(plot.array)[1]+0.25)),y0=plot.array[,"2.5 %",'mlst'],y1=plot.a
 arrows(x0=((1:dim(plot.array)[1]+0.5)),y0=plot.array[,"2.5 %",'gps'],y1=plot.array[,"97.5 %",'gps'], pch=16, col='#4daf4a', length=0)
 
 abline(h=0, lty=2, col='gray')
-text(1:10, y=-1, c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc'), pos=4, offset=0, xpd=NA, col='gray', cex=0.75, srt=90)
+text(1:10, y=-1, c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Ribitol','ManNAc'), pos=4, offset=0, xpd=NA, col='gray', cex=0.75, srt=90)
 legend(1.1,2, legend=c("CC", "MLST", "GPSC"),
        col=c("#e41a1c", "#377eb8", "#4daf4a"), pch=c(16,17,18), box.lty=0, adj=c(0.1, 0.5))
 }
@@ -329,22 +329,22 @@ plotrange[plotrange>3]<-3
 plot(plot.array[1:dim(plot.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=c(-1,3), ylab=paste0(model.labs[i],' Coefficient'), xaxt='n', xlab='', xlim=c(0.9,dim(plot.array)[1]+0.55))
 points(((1:dim(plot.array)[1]+0.1)),plot.array[,'estimate','mlst'], pch=17, col='#377eb8')
 points(((1:dim(plot.array)[1]+0.2)),plot.array[,'estimate','gps'], pch=18, col='#4daf4a')
-points(((1:dim(plot.array)[1]+0.3)),plot.array[,'estimate','phylo200'], pch=18, col='#ff7f00')
-points(((1:dim(plot.array)[1]+0.4)),plot.array[,'estimate','phylo300'], pch=18, col='#a65628')
+points(((1:dim(plot.array)[1]+0.4)),plot.array[,'estimate','phylo200'], pch=18, col='#ff7f00')
+points(((1:dim(plot.array)[1]+0.3)),plot.array[,'estimate','phylo300'], pch=18, col='#a65628')
 
 
 arrows(x0=1:dim(plot.array)[1],y0=plot.array[,"2.5 %",'cc'],y1=plot.array[,"97.5 %",'cc'], pch=16, col='#e41a1c', length=0)
 arrows(x0=((1:dim(plot.array)[1]+0.1)),y0=plot.array[,"2.5 %",'mlst'],y1=plot.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
 arrows(x0=((1:dim(plot.array)[1]+0.2)),y0=plot.array[,"2.5 %",'gps'],y1=plot.array[,"97.5 %",'gps'], pch=16, col='#4daf4a', length=0)
-arrows(x0=((1:dim(plot.array)[1]+0.3)),y0=plot.array[,"2.5 %",'phylo200'],y1=plot.array[,"97.5 %",'phylo200'], pch=16, col='#ff7f00', length=0)
-arrows(x0=((1:dim(plot.array)[1]+0.4)),y0=plot.array[,"2.5 %",'phylo300'],y1=plot.array[,"97.5 %",'phylo300'], pch=16, col='#a65628', length=0)
+arrows(x0=((1:dim(plot.array)[1]+0.4)),y0=plot.array[,"2.5 %",'phylo200'],y1=plot.array[,"97.5 %",'phylo200'], pch=16, col='#ff7f00', length=0)
+arrows(x0=((1:dim(plot.array)[1]+0.3)),y0=plot.array[,"2.5 %",'phylo300'],y1=plot.array[,"97.5 %",'phylo300'], pch=16, col='#a65628', length=0)
 
 
 
 abline(h=0, lty=2, col='gray')
 text(1:10, y=-1, c('Glc','GlcA','Any NAc', 'Rha','Gal','GlcNAc','Gro','FucNAc', 'Rib-ol','ManNAc'), pos=4, offset=0, xpd=NA, col='gray', cex=0.75, srt=90)
-legend(1.1,3, legend=c("CC", "MLST", "GPSC", 'Phylo200', 'Phylo300'),
-       col=c("#e41a1c", "#377eb8", "#4daf4a","#ff7f00","#a65628"), pch=c(16,17,18, 18,18), box.lty=0, adj=c(0.1, 0.5))
+legend(1.1,3, legend=c("CC", "MLST", "GPSC", 'Phylo300', 'Phylo200'),
+       col=c("#e41a1c", "#377eb8", "#4daf4a","#a65628","#ff7f00"), pch=c(16,17,18, 18,18), box.lty=0, adj=c(0.1, 0.5))
 }
 ```
 
@@ -631,32 +631,32 @@ arrows(x0=((1:dim(reg.array)[1]+0.15)),y0=reg.array[,"2.5 %",'mlst'],y1=reg.arra
 arrows(x0=((1:dim(reg.array)[1]+0.3)),y0=reg.array[,"2.5 %",'gpsc'],y1=reg.array[,"97.5 %",'gpsc'], pch=16, col='#4daf4a', length=0)
 
 abline(h=0, lty=2, col='gray')
-text(1:10, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray', cex=0.75)
+text(1:12, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray', cex=0.75)
 legend("topright", legend=c("CC", "MLST", "GPSC"),
        col=c("#e41a1c", "#377eb8", "#4daf4a"), pch=c(16,17,18), box.lty=0)
 
 ```
 Same, but also include the phylo results
 ```{r}
-reg.array<-abind(cc.div, mlst.div, GPSC.div,phylo.div100,phylo.div200,phylo.div300, along=3)
-dimnames(reg.array)[[3]]<-c('cc','mlst','gpsc', 'phylo100', 'phylo200', 'phylo300')
+reg.array<-abind(cc.div, mlst.div, GPSC.div,phylo.div300,phylo.div200,phylo.div100, along=3)
+dimnames(reg.array)[[3]]<-c('cc','mlst','gpsc', 'phylo300', 'phylo200', 'phylo100')
 reg.array<-reg.array[order(reg.array[,'AIC','cc']),,]
-plot(reg.array[1:dim(reg.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=range(reg.array[,c("estimate", "2.5 %","97.5 %"),]), ylab='Coefficient', xaxt='n', xlab='')
+plot(reg.array[1:dim(reg.array)[1],'estimate','cc'], pch=16, col='#e41a1c', bty='l', ylim=c(min(reg.array[,c("estimate", "2.5 %","97.5 %"),]),6), ylab='Coefficient', xaxt='n', xlab='')
 points(((1:dim(reg.array)[1]+0.1)),reg.array[,'estimate','mlst'], pch=17, col='#377eb8')
 points(((1:dim(reg.array)[1]+0.2)),reg.array[,'estimate','gpsc'], pch=18, col='#4daf4a')
-points(((1:dim(reg.array)[1]+0.3)),reg.array[,'estimate','phylo100'], pch=18, col='#984ea3')
+points(((1:dim(reg.array)[1]+0.3)),reg.array[,'estimate','phylo300'], pch=18, col='#a65628')
 points(((1:dim(reg.array)[1]+0.4)),reg.array[,'estimate','phylo200'], pch=18, col='#ff7f00')
-points(((1:dim(reg.array)[1]+0.5)),reg.array[,'estimate','phylo300'], pch=18, col='#a65628')
+points(((1:dim(reg.array)[1]+0.5)),reg.array[,'estimate','phylo100'], pch=18, col='#984ea3')
 
 arrows(x0=1:dim(reg.array)[1],y0=reg.array[,"2.5 %",'cc'],y1=reg.array[,"97.5 %",'cc'], pch=16, col='#e41a1c', length=0)
 arrows(x0=((1:dim(reg.array)[1]+0.1)),y0=reg.array[,"2.5 %",'mlst'],y1=reg.array[,"97.5 %",'mlst'], pch=16, col='#377eb8', length=0)
 arrows(x0=((1:dim(reg.array)[1]+0.2)),y0=reg.array[,"2.5 %",'gpsc'],y1=reg.array[,"97.5 %",'gpsc'], pch=16, col='#4daf4a', length=0)
-arrows(x0=((1:dim(reg.array)[1]+0.3)),y0=reg.array[,"2.5 %",'phylo100'],y1=reg.array[,"97.5 %",'phylo100'], pch=16, col='#984ea3', length=0)
+arrows(x0=((1:dim(reg.array)[1]+0.3)),y0=reg.array[,"2.5 %",'phylo300'],y1=reg.array[,"97.5 %",'phylo300'], pch=16, col='#a65628', length=0)
 arrows(x0=((1:dim(reg.array)[1]+0.4)),y0=reg.array[,"2.5 %",'phylo200'],y1=reg.array[,"97.5 %",'phylo200'], pch=16, col='#ff7f00', length=0)
-arrows(x0=((1:dim(reg.array)[1]+0.5)),y0=reg.array[,"2.5 %",'phylo300'],y1=reg.array[,"97.5 %",'phylo300'], pch=16, col='#a65628', length=0)
+arrows(x0=((1:dim(reg.array)[1]+0.5)),y0=reg.array[,"2.5 %",'phylo100'],y1=reg.array[,"97.5 %",'phylo100'], pch=16, col='#984ea3', length=0)
 
 abline(h=0, lty=2, col='gray')
-text(1:11, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray', cex=0.75)
-#legend("topright", legend=c("CC", "MLST", "GPSC", 'Phylo100', 'Phylo200', 'Phylo300'),       col=c("#e41a1c", "#377eb8", "#4daf4a",'#984ea3','#ff7f00','#a65628'), pch=c(16,17,18), box.lty=0)
+text(1:12, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray', cex=0.75)
+legend("topright", legend=c("CC", "MLST", "GPSC", 'Phylo300', 'Phylo200', 'Phylo100'),       col=c("#e41a1c", "#377eb8", "#4daf4a",'#a65628','#ff7f00',  '#984ea3'), pch=c(16,17,18,18,18,18), box.lty=0)
 
 ```
