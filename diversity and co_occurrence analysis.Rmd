@@ -2,11 +2,13 @@
 title: "Analysis of serotype co-occurrence and diversity"
 author: "Dan Weinberger"
 date: "September 19, 2019"
-output: html_document
+output: 
+  html_document:
+    self_contained: no
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(dev="tiff", 
                dev.args=list(type="cairo"),
                dpi=300)
@@ -281,7 +283,7 @@ print(table.phylo1,type="html",useViewer=TRUE)
 ```
 
 Figure of table 1 (Figure 2)
-```{r, fig.width=8, fig.height=4}
+```{r fig2, fig.width=8, fig.height=4}
 combined.array.bin<- abind(mlst.mod$binomial.res,cc.mod$binomial.res, gps.mod$binomial.res, along=3 )
 combined.array.pois<- abind(mlst.mod$poisson.res,cc.mod$poisson.res, gps.mod$poisson.res, along=3 )
 combined.array<-abind(combined.array.bin,combined.array.pois, along=4)
@@ -532,7 +534,7 @@ cbind(phylo.sdi.format100,phylo.sdi.format200[,2],phylo.sdi.format300[,2])
 ```
 
 
-```{r, fig.width=8, fig.height=4}
+```{r fig3, fig.width=8, fig.height=4}
 names(GPSC.sdi)<-c('st','sdi.gps','N.gps')
 names(mlst.sdi)<-c('st','sdi.mlst','N.mlst')
 names(cc.sdi)<-c('st','sdi.cc','N.cc')
@@ -621,7 +623,7 @@ print(table.div,type="html",useViewer=TRUE)
 table.div
 ```
 Or a figure of the same
-```{r}
+```{r fig4}
 reg.array<-abind(cc.div, mlst.div, GPSC.div, along=3)
 dimnames(reg.array)[[3]]<-c('cc','mlst','gpsc')
 reg.array<-reg.array[order(reg.array[,'AIC','cc']),,]
