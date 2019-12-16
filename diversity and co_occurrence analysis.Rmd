@@ -7,6 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(dev="tiff", 
+               dev.args=list(type="cairo"),
+               dpi=300)
 library(reshape2)
 library(readr)
 library(MASS)
