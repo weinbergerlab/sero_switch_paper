@@ -1,16 +1,15 @@
-rm(list = ls())
 
-setwd("/Users/sj577/Documents/ss_paper")
-#Gather outputs from MC and MB for both MLST and CC
-mc_st <- read.csv("index/975tile_st.csv")
-mc_cc <- read.csv("index/975tile_cc.csv")
-mb_st <- read.csv("index/rules_all_2serotypes_st.csv")
+mc_st <- read.csv("./shreyas_analysis_files/monte_carlo/MLST/975tile_st.csv")
+mc_cc <- read.csv("./shreyas_analysis_files/monte_carlo/CC/975tile_cc.csv")
+mb_st <- read.csv("./shreyas_analysis_files/MB/rules_all_2serotypes_st.csv")
+mb_cc <- read.csv("./shreyas_analysis_files/MB/rules_all_2serotypes_cc.csv")
+
 #Fix Serotype names to make them readable
 mb_st$lhs <- gsub('\\{','',mb_st$lhs)
 mb_st$lhs <- gsub('\\}','',mb_st$lhs)
 mb_st$rhs <- gsub('\\{','',mb_st$rhs)
 mb_st$rhs <- gsub('\\}','',mb_st$rhs)
-mb_cc <- read.csv("index/rules_all_2serotypes_cc.csv")
+
 mb_cc$lhs <- gsub('\\{','',mb_cc$lhs)
 mb_cc$lhs <- gsub('\\}','',mb_cc$lhs)
 mb_cc$rhs <- gsub('\\{','',mb_cc$rhs)
@@ -45,7 +44,10 @@ mc_merge$mc_cc_index_sig[which(mc_merge$CC_Obs>mc_merge$CC_Exp)] <- 1
 
 #Combine results from MB output for both ST and CC
 mb_merge <- merge(mb_st,mb_cc,by = "pair")
-mb_merge <- mb_merge[,c(1,6:11,16:21)]
+#mb_merge <- mb_merge[,c(1,6:11,16:21)]
+mb_merge <- mb_merge[,c('pair','support.x','confidence.x','lift.x','count.x',"ST_chisq",   "ST_fisher",
+                        'support.y','confidence.y','lift.y','count.y',"CC_chisq",   "CC_fisher"  )]
+
 colnames(mb_merge) <- c("sero_pair","ST_support","ST_confidence","ST_lift","ST_count","ST_chisq","ST_fisher","CC_support","CC_confidence","CC_lift","CC_count","CC_chisq","CC_fisher")
 
 #Prepare index for ST
@@ -69,8 +71,11 @@ mb_merge$mb_cc_index_con <- 0
 confidence_threshold <- quantile(mb_merge$CC_confidence)
 mb_merge$mb_cc_index_con[which(mb_merge$CC_confidence > confidence_threshold[4])] <- 0.25
 #Weight = 0.25 if chi square values are significant
+
+
 mb_merge$mb_cc_index_chi <- 0
 mb_merge$mb_cc_index_chi[which(mb_merge$CC_chisq < 0.05)] <- 0.25
+
 #Weight = 0.25 if lift > 1
 mb_merge$mb_cc_index_lift <- 0
 mb_merge$mb_cc_index_lift[which(mb_merge$CC_lift > 1)] <- 0.25
@@ -91,8 +96,8 @@ ss_results <- merge(mc_merge,mb_merge,by = "sero_pair")
 ss_index <- ss_results[,c(1:3,8:11,24:31)]
 ss_index$total <- rowSums(ss_index[,4:15])
 
-write.csv(ss_results,"index/ss_results.csv")
-write.csv(ss_index, "index/ss_index.csv")
+write.csv(ss_results,"./shreyas_analysis_files/ss_results.csv")
+write.csv(ss_index, "./shreyas_analysis_files/ss_index.csv")
 
 # length(ss_index$total)
 # length(which(ss_index$total >= 1))
