@@ -1,8 +1,9 @@
 
-mc_st <- read.csv("./shreyas_analysis_files/monte_carlo/MLST/975tile_st.csv")
+mc_st <- read.csv("./shreyas_analysis_files/monte_carlo/MLST/2_5tile_st.csv")
 mc_cc <- read.csv("./shreyas_analysis_files/monte_carlo/CC/975tile_cc.csv")
 mb_st <- read.csv("./shreyas_analysis_files/MB/rules_all_2serotypes_st.csv")
 mb_cc <- read.csv("./shreyas_analysis_files/MB/rules_all_2serotypes_cc.csv")
+
 
 #Fix Serotype names to make them readable
 mb_st$lhs <- gsub('\\{','',mb_st$lhs)
@@ -26,9 +27,9 @@ mb_cc$pair <- paste(mb_cc$lhs,"-",mb_cc$rhs)
 pair <- list(mc_st$pair, mc_cc$pair, mb_st$pair, mb_cc$pair)
 pair <- Reduce(intersect,pair)
 
-#Combine results from MC output for both ST and CC
+#Combine results from MC output for both ST and CC--use LCL of monte carlo as the expected here
 mc_merge <- merge(mc_st,mc_cc,by = "pair")
-mc_merge <- mc_merge[,c(1,3:6,10,11)]
+mc_merge <- mc_merge[, c("pair","Serotype1.x","Serotype2.x","Freq.x","X025tile.x","Freq.y","X025tile.y")]
 colnames(mc_merge) <- c("sero_pair","Serotype1","Serotype2","ST_Obs","ST_Exp","CC_Obs","CC_Exp")
 
 #Prepare index
@@ -53,6 +54,11 @@ mc_merge$mc_cc_index_freq[which(mc_merge$CC_Exp > 2)] <- 1
 mc_merge$mc_cc_index_sig <- 0
 mc_merge$mc_cc_index_sig[which(mc_merge$CC_Obs<mc_merge$CC_Exp)] <- 1
 
+#filter out if expected <3
+#mc_merge <- mc_merge[mc_merge$mc_cc_index_freq==1 ,]
+
+mc_merge$mc.index <- mc_merge$mc_st_index_sig + mc_merge$mc_cc_index_sig
+
 #Combine results from MB output for both ST and CC
 mb_merge <- merge(mb_st,mb_cc,by = "pair")
 #mb_merge <- mb_merge[,c(1,6:11,16:21)]
@@ -61,43 +67,34 @@ mb_merge <- mb_merge[,c('pair','support.x','confidence.x','lift.x','count.x',"ST
 
 colnames(mb_merge) <- c("sero_pair","ST_support","ST_confidence","ST_lift","ST_count","ST_chisq","ST_fisher","CC_support","CC_confidence","CC_lift","CC_count","CC_chisq","CC_fisher")
 
+
+## Market basket weights
+
 #Prepare index for ST
 #Weight = 0.25 if confidence measure values are in the BOTTOM quartile. These can be adjusted by adding "probs=" to the quantile function
 mb_merge$mb_st_index_con <- 0
 
 confidence_threshold <- quantile(mb_merge$ST_confidence)
 
-mb_merge$mb_st_index_con[which(mb_merge$ST_confidence < confidence_threshold[1])] <- 0.25
+mb_merge$mb_st_index_con[which(mb_merge$ST_confidence < confidence_threshold[1])] <- 0.5
 
-#Weight = 0.25 if chi square values are significant
-mb_merge$mb_st_index_chi <- 0
-mb_merge$mb_st_index_chi[which(mb_merge$ST_chisq < 0.05)] <- 0.25
 
-#Weight = 0.25 if lift < 1
+#Weight = 1  if lift < 1
 mb_merge$mb_st_index_lift <- 0
-mb_merge$mb_st_index_lift[which(mb_merge$ST_lift < 1)] <- 0.25
-
-#Weight = 0.25 if fisher's exact test is significant
-mb_merge$mb_st_index_fisher <- 0
-mb_merge$mb_st_index_fisher[which(mb_merge$ST_fisher < 0.05)] <- 0.25
+mb_merge$mb_st_index_lift[mb_merge$ST_lift < 1  ] <- 0.5
 
 #Prepare index for CC
 #Weight = 0.25 if confidence measure values are in the BOOTOM quartile. These can be adjusted by adding "probs=" to the quantile function
 mb_merge$mb_cc_index_con <- 0
 confidence_threshold <- quantile(mb_merge$CC_confidence)
-mb_merge$mb_cc_index_con[which(mb_merge$CC_confidence < confidence_threshold[1])] <- 0.25
+mb_merge$mb_cc_index_con[which(mb_merge$CC_confidence < confidence_threshold[1])] <- 0.5
 #Weight = 0.25 if chi square values are significant
 
 
-mb_merge$mb_cc_index_chi <- 0
-mb_merge$mb_cc_index_chi[which(mb_merge$CC_chisq < 0.05)] <- 0.25
-
-#Weight = 0.25 if lift < 1
+#Weight = 0.5 if lift < 1 
 mb_merge$mb_cc_index_lift <- 0
-mb_merge$mb_cc_index_lift[which(mb_merge$CC_lift < 1)] <- 0.25
-#Weight = 0.25 if fisher's exact test is significant
-mb_merge$mb_cc_index_fisher <- 0
-mb_merge$mb_cc_index_fisher[which(mb_merge$CC_fisher < 0.05)] <- 0.25
+mb_merge$mb_cc_index_lift[mb_merge$CC_lift < 1 ] <- 0.5
+
 
 #SUMMARY OF INDEX
 #Essentially we have assigned a weight of 1 to the count/frequency of isolates for a serotype pair
@@ -108,9 +105,11 @@ mb_merge$mb_cc_index_fisher[which(mb_merge$CC_fisher < 0.05)] <- 0.25
 #Merge results for MC and MB
 ss_results <- merge(mc_merge,mb_merge,by = "sero_pair")
 
+
+##IMPORTANT NOTE: MARKET BASKET NOT REALLY SET UP FOR IDENTIFYING NEGATIVE ASSOCIATIONS;;IGNORE
 #Make a separate table for index
-ss_index <- ss_results[,c(1:3,8:11,24:31)]
-ss_index$total <- rowSums(ss_index[,4:15])
+ss_index <- ss_results[,c('sero_pair','mc_st_index_sig','mc_cc_index_sig','mb_st_index_lift','mb_cc_index_lift' )]
+ss_index$total <- rowSums(ss_index[,-1])
 
 write.csv(ss_results,"./shreyas_analysis_files/ss_results_under_rep.csv")
 write.csv(ss_index, "./shreyas_analysis_files/ss_index_under_rep.csv")

@@ -400,7 +400,7 @@ mb.func<-function(ds1){
     #plot(rules_2, method = "graph")
     
     #filter 
-    rule.inc <- subset(rules_2, subset =  lift > 1 & rules_2@quality$count>5)
+    rule.inc <- subset(rules_2, subset =  lift < 1 & rules_2@quality$count>1)
     #plot(rule.inc, method = "graph")
     rule.inc.sig<-interestMeasure(rule.inc, measure = c("chiSquared","fishersExactTest"), transactions = ps_tran)
     rule.inc2<-cbind(inspect(rule.inc),rule.inc.sig)
@@ -426,7 +426,7 @@ mb.func<-function(ds1){
     rules_sig_2sero <- rules_all_2sero[rules_all_2sero$count > 2,]
     
     rules_sig_2sero<-rules_sig_2sero[order(-rules_sig_2sero$lift) ,]
-    rules_sig_2sero<-rules_sig_2sero[rules_sig_2sero$fishersExactTest<0.05 & rules_sig_2sero$count>3 & rules_sig_2sero$lift>1 ,]
+    rules_sig_2sero<-rules_sig_2sero[rules_sig_2sero$fishersExactTest<0.05 & rules_sig_2sero$count>3 & rules_sig_2sero$lift<1 ,]
    # rules_sig_2sero[rules_sig_2sero$count>3 & rules_sig_2sero$lift>1,]
     res<-list('rules_2sero'=rules_2sero, 'rules_sig_2sero'=rules_sig_2sero )
     return(res)
