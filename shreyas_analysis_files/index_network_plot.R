@@ -4,7 +4,7 @@ library(igraph)
 #set working directory
 setwd("D:\\ss_paper")
 #Load network data file
-network_data <- read.csv("index/ss_index.csv")
+network_data <- read.csv("./shreyas_analysis_files/ss_index.csv")
 network_data <- network_data[which(network_data$total >= 5),]
 
 #Reorder the sequence of columns in network data with lhs, rhs and total
@@ -62,4 +62,4 @@ E(net)$width <- E(net)$weight
 l <- layout.auto(net)
 plot(net, edge.color=c("red","green")[(E(net)$in_sero=="inside")+1],layout = l)
 
-write_graph(net, "plots/index_5_or_more.graphml", format = "graphml")
+write_graph(net, "./shreyas_analysis_files/index_5_or_more.graphml", format = "graphml")

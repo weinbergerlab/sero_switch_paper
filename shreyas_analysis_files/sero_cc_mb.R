@@ -8,7 +8,7 @@ library(arules)
 library(arulesViz)
 
 #Load file containing serotype*mlst matrix
-sero_cc <- read.csv("data_prep/serotype_cluster_mat.csv")
+sero_cc <- read.csv("./shreyas_analysis_files/serotype_cluster_mat.csv")
 #Assign serotypes as row names
 rownames(sero_cc) <- sero_cc$X
 #Remove first column containing serotypes
@@ -68,9 +68,10 @@ r2_qual$CC_fisher <- interestMeasure(rules_2, measure = c("fishersExactTest"), t
 #Remove duplicate rules
 rules_all_2sero <- r2_qual
 rules_sig_2sero <- rules_all_2sero[rules_all_2sero$count > 2,]
+
 #Save results in csv
-#write.csv(rules_2sero, "market_basket/CC/rules_all_2serotypes_cc.csv")
-#write.csv(rules_sig_2sero, "market_basket/CC/rules_sig_2serotypes_cc.csv")
+write.csv(rules_all_2sero, "./shreyas_analysis_files/MB/rules_all_2serotypes_cc.csv")
+write.csv(rules_sig_2sero, "./shreyas_analysis_files/MB/rules_sig_2serotypes_cc.csv")
 
 #Save results in csv
 #write.csv(rules_all_2sero, "index/rules_all_2serotypes_cc.csv")

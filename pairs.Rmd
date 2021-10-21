@@ -1,0 +1,54 @@
+---
+title: "pair code"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, eval=F}
+source('./shreyas_analysis_files/sero_mc_st.R')
+source('./shreyas_analysis_files/sero_mc_cc.R')
+```
+
+```{r, eval=F}
+source('./shreyas_analysis_files/sero_cc_mb.R')
+source('./shreyas_analysis_files/sero_cc_mb.R')
+
+```
+
+Index to identify serotype pairs found more often than expected
+```{r}
+source('./shreyas_analysis_files/ss_results.R')
+
+index.more <- read.csv('./shreyas_analysis_files/ss_index.csv')
+index.more <- index.more[order(-index.more$total),]
+View(index.more[,c('sero_pair','total')])
+
+write.csv(index.more, 'st.pairs.over.csv')
+```
+
+Index to identify serotype pairs found LESS often than expected
+```{r}
+source('./shreyas_analysis_files/ss_results_LESS.R')
+
+index.less <- read.csv('shreyas_analysis_files/ss_index_under_rep.csv')
+
+index.less <- index.less[order(-index.less$total),]
+View(index.less[,c('sero_pair','total')])
+
+write.csv(index.less, 'st.pairs.under.csv')
+
+```
+
+
+Network plot
+
+```{r}
+source('./shreyas_analysis_files/index_network_plot.R')
+
+```
+
+

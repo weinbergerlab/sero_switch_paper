@@ -400,7 +400,7 @@ mb.func<-function(ds1){
     #plot(rules_2, method = "graph")
     
     #filter 
-    rule.inc <- subset(rules_2, subset =  lift > 1 & rules_2@quality$count>5)
+    rule.inc <- subset(rules_2, subset =  lift < 1 & rules_2@quality$count>1)
     #plot(rule.inc, method = "graph")
     rule.inc.sig<-interestMeasure(rule.inc, measure = c("chiSquared","fishersExactTest"), transactions = ps_tran)
     rule.inc2<-cbind(inspect(rule.inc),rule.inc.sig)
@@ -426,7 +426,7 @@ mb.func<-function(ds1){
     rules_sig_2sero <- rules_all_2sero[rules_all_2sero$count > 2,]
     
     rules_sig_2sero<-rules_sig_2sero[order(-rules_sig_2sero$lift) ,]
-    rules_sig_2sero<-rules_sig_2sero[rules_sig_2sero$fishersExactTest<0.05 & rules_sig_2sero$count>3 & rules_sig_2sero$lift>1 ,]
+    rules_sig_2sero<-rules_sig_2sero[rules_sig_2sero$fishersExactTest<0.05 & rules_sig_2sero$count>3 & rules_sig_2sero$lift<1 ,]
    # rules_sig_2sero[rules_sig_2sero$count>3 & rules_sig_2sero$lift>1,]
     res<-list('rules_2sero'=rules_2sero, 'rules_sig_2sero'=rules_sig_2sero )
     return(res)
@@ -481,7 +481,9 @@ form1<-as.formula(paste0('logit.diversity~ sqrt(SLEEMANCARRN) +', sug.list)    )
   return(sdi.result)
 }
 ```
+
 Diversity by CC
+
 ```{r}
 cc.sdi<-diversity.func(cc1)
 cc.div<-t(sapply(sugs, diversity.cor.func, ds=cc.sdi))
@@ -665,3 +667,34 @@ text(1:12, y=-2.5, dimnames(reg.array)[[1]], pos=4, offset=0, xpd=NA, col='gray'
 legend("topright", legend=c("CC", "MLST", "GPSC", 'Phylo300', 'Phylo200', 'Phylo100'),       col=c("#e41a1c", "#377eb8", "#4daf4a",'#a65628','#ff7f00',  '#984ea3'), pch=c(16,17,18,18,18,18), box.lty=0)
 
 ```
+
+## Simply quantify which serotypes are more/less diverse than expected based on their carriage
+```{r}
+
+
+#Function to evauate correlations
+#diversity.re.func<-function(ds){
+  ds= GPSC.sdi
+ names(ds) <- c('st','sdi','N')
+  st.cc.diversity<-merge(ds, carr1, by.x='st', by.y='ST', all=T)
+  st.cc.diversity<-merge(st.cc.diversity, ps1, by.x='st', by.y='Serotype', all=T)
+  st.cc.diversity$SLEEMANCARRN[is.na(st.cc.diversity$SLEEMANCARRN)]<-0
+  st.cc.diversity$NORWAYCARR_PRE[is.na(st.cc.diversity$NORWAYCARR_PRE)]<-0
+ # st.cc.diversity<-st.cc.diversity[!is.na(st.cc.diversity$st.cc.diversity),]
+  #st.cc.diversity<-st.cc.diversity[!is.na(st.cc.diversity$Glc),]
+  st.cc.diversity$sdi[st.cc.diversity$sdi==0]<-0.01
+  st.cc.diversity$sdi[st.cc.diversity$sdi==1]<-0.99
+  st.cc.diversity$logit.diversity<- log(st.cc.diversity$sdi/(1-st.cc.diversity$sdi))
+ # plot(logit.diversity, log(st.cc.diversity$st.cc.sum))
+  
+
+p2<-ggplot(data=st.cc.diversity, aes(x=sqrt(SLEEMANCARRN) , y=logit.diversity)) +
+  geom_text_repel(size=3,aes(label=st) , colour='gray70')+
+    geom_point()+
+  theme(panel.grid.major = element_blank(),legend.position = "none", panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  xlab("Sleeman Carr (sqrt")+
+  ylab('Serotype Diversity (GPSC)')
+p2
+
+```
+

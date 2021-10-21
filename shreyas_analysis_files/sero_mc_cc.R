@@ -8,7 +8,7 @@ library(reshape2)
 #GENERATE sero_cc_unique.csv from serotype_mlst_mat.csv
 #This dataset will contain unique serotype-MLST combinations that were observed in data from PubMLST
 #Load serotype*mlst matrix
-sero_cc <- read.csv("data_prep/serotype_cluster_mat.csv")
+sero_cc <- read.csv("./shreyas_analysis_files/serotype_cluster_mat.csv")
 #Remove X from column names
 colnames(sero_cc) <- substring(colnames(sero_cc),2)
 #Add column name to first column which will be assigned as id for the melt command
@@ -53,6 +53,7 @@ sero_pairs_cc$shared_cc <- 0
 #To calculate the number of shared cc, number of cc that are associated with both serotypes in a pair will be calculated
 #There are several MLST (almost 372 out of 641)in the data that are associated with only 1 serotype
 length(which(colSums(sero_cc) == 1)) #372
+
 #To make computation faster, include only those CC that are associated with more than one serotype
 sero_cc <- sero_cc[,which(colSums(sero_cc) > 1)]
 
@@ -76,7 +77,7 @@ for(i in 1:1000){
   samples[[i]] <- sample(1:nrow(sero_cc_unique), size = nrow(sero_cc_unique), replace = FALSE)
 }
 
-#Markov Chain Monte Carlo (MCMC)
+# Monte Carlo (MC)
 #Through the values obtained from resampling from the steps above, perform pairwise operation similar to the previous step,
 #and store the values in 1000 columns of a data frame
 mc_output <- sero_pairs_cc
@@ -102,14 +103,16 @@ for (j in 1:1000){
 #Change NA values to 0
 mc_output[is.na(mc_output) == T] <- 0
 #Save results
-write.csv(mc_output, "monte_carlo/CC/1000_run.csv")
+write.csv(mc_output, "./shreyas_analysis_files/monte_carlo/CC/1000_run.csv")
 #Add a column with values for upper 97.5 percentile (percent quantile) for each row
-mc_output[,1004] <- apply(mc_output[,4:ncol(mc_output)], 1, quantile, probs = 0.975)
+#mc_output[,1004] <- apply(mc_output[,4:ncol(mc_output)], 1, quantile, probs = 0.025)
 
-hist(t(mc_output[4,4:1003]))
+quants <- t(apply(mc_output[,4:ncol(mc_output)], 1, quantile, probs = c(0.025, 0.975)))
 
-#Make a data frame containing serotype pairs, frequency of that pairing, and 97.5%ile value
-sero_quant <- mc_output[,c(1:3,1004)]
+
+
+#Make a data frame containing serotype pairs, frequency of that pairing, and 2.5%ile value
+sero_quant <- cbind(mc_output[,c(1:3)],quants)
 #Remove serotype pairs with no shared MLST
 sero_quant <- sero_quant[-which(sero_quant$shared_cc == 0),]
 
@@ -117,12 +120,12 @@ sero_quant <- sero_quant[-which(sero_quant$shared_cc == 0),]
 #sero_fin <- sero_quant[(sero_quant$V1004 < sero_quant$shared_mlst),]
 sero_fin <- sero_quant
 #Assign column names and store the results in a separate file
-colnames(sero_fin) <- c("Serotype1","Serotype2","Freq","975tile")
+colnames(sero_fin) <- c("Serotype1","Serotype2","Freq","025tile", "975tile")
 #write.csv(sero_fin, "monte_carlo/CC/975tile_cc.csv")
-#write.csv(sero_fin, "index/975tile_cc.csv")
+write.csv(sero_fin, "./shreyas_analysis_files/monte_carlo/CC/975tile_cc.csv")
 
 #Filter sero_fin with threshold of 3 on the basis of number of shared cc
 sero_fin_wt <- sero_fin[sero_fin$Freq > 2,]
 #Save results
 #write.csv(sero_fin_wt,"monte_carlo/CC/975tile_cc_wt.csv")
-#write.csv(sero_fin_wt,"index/975tile_cc_wt.csv")
+write.csv(sero_fin_wt,"./shreyas_analysis_files/monte_carlo/CC/975tile_cc_wt.csv")
