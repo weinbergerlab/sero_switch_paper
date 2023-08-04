@@ -26,8 +26,8 @@ library(ggrepel)
 
 GPS
 ```{r}
-gps1<-read_excel('./Data/gladstone gps.xlsx',guess_max=10000)
-gps1<-gps1[,c('In_Silico_Serotype', 'GPSC')]
+gps1<-read_csv('./Data/monocle-metadata-gps_2023-08-04.csv',guess_max=10000)
+gps1<-gps1[,c('In_silico_serotype', 'GPSC')]
 names(gps1)<-c('st','SC')
 gps1$count<-1
 gps1$st[gps1$st=='15BC']<-'15B/C'
@@ -62,10 +62,12 @@ d1 <- gps1 %>%
   left_join(ps1, by='st') %>%
   group_by(SC) %>%
   summarize( rha_prop=mean(Rha, na.rm=T), any.nac.prop=mean(any.nac, na.rm=T), n_isolates=n(), n_serotypes=n_distinct(st), serotypes=paste(unique(st), collapse='_')) %>%
-  filter(n_serotypes>=3 & n_isolates>=50)
+  filter(n_serotypes>=3 & n_isolates>=50) %>%
+  arrange(-rha_prop)
 
 
-d1$
+write.csv(d1,'./Data/st_gps_combos.csv')
+
 hist(d1$rha_prop)
 hist(d1$any.nac.prop)
 
