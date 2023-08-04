@@ -19,6 +19,7 @@ library(rio)
 library(readxl)
 library(htmlTable)
 library(arules)
+library(dplyr)
 library(arulesViz)
 library(gridExtra)
 library(ggplot2)
@@ -83,6 +84,8 @@ phylo300.c<- dcast(phylo300.m,st~PG,fun.aggregate = sum )
 
 
 ##Read in auxillary data
+
+40% of serotypes have Rha (Rha serotypes tend to be more  common overall in carriage and disease)
 ```{r cars}
 carr1<-import('https://raw.githubusercontent.com/weinbergerlab/GrowthVariation/master/Data/carr%20data.csv')
 carr1$ST[carr1$ST %in% c('15B','15C')]<-'15B/C'
@@ -93,6 +96,20 @@ ps1$Ribitol<-ps1$`Rib-ol`
 ps1$Serotype[ps1$Serotype=='15B']<-'15B/C'
 ps1$any.nac<-apply(ps1[,c('FucNAc','GalNAc', 'ManNAc', 'ManNAcA','PneNAc', 'GlcNAc')], 1,sum)
 ps1$any.nac<-(ps1$any.nac>0)*1
+
+ps1 <- ps1 %>%
+  mutate(
+         Gal = ifelse(Serotype=='23A', 1, Gal) ,  #https://pubmed.ncbi.nlm.nih.gov/28837839
+         Rha = ifelse(Serotype=='23A', 1, Rha) ,  #https://pubmed.ncbi.nlm.nih.gov/28837839
+         Gro = ifelse(Serotype=='23A', 1, Gro) ,  #https://pubmed.ncbi.nlm.nih.gov/28837839
+               
+         Rha = ifelse(Serotype=='7C', 1, Rha) ,  #https://pubmed.ncbi.nlm.nih.gov/29715685/
+         any.nac = ifelse(Serotype=='7C', 1, any.nac)   #https://pubmed.ncbi.nlm.nih.gov/29715685/
+         
+  )
+         
+
+
 ```
 
 ##Co occurrence analysis
@@ -185,19 +202,24 @@ phylo200.co<-co.occur.func(phylo200.c)
 phylo300.co<-co.occur.func(phylo300.c)
 
 write.csv(mlst.co[,c('Sero1','Sero2','ccN','mlstN.x','mlstN.y','same.sg','both.glcA','both.gal','both.glc','both.glcnac','both.ac','both.rha','both.gro','both.ribol','both.cho','both.fucnac','both.mannac','both.NAC' )],'co.occurrence.mlst.csv')
+
 write.csv(cc.co[,c('Sero1','Sero2','ccN','mlstN.x','mlstN.y','same.sg','both.glcA','both.gal','both.glc','both.glcnac','both.ac','both.rha','both.gro','both.ribol','both.cho','both.fucnac','both.mannac','both.NAC' )],'co.occurrence.cc.csv')
+
 write.csv(gps.co[,c('Sero1','Sero2','ccN','mlstN.x','mlstN.y','same.sg','both.glcA','both.gal','both.glc','both.glcnac','both.ac','both.rha','both.gro','both.ribol','both.cho','both.fucnac','both.mannac','both.NAC' )],'co.occurrence.gps.csv')
 
 ```
 
 ```{r}
 reg.func2<-function(ds2){
-  sug.vars<-c('both.glcA','both.NAC','both.rha', 'both.gal', 'both.glcnac','both.gro','both.fucnac','both.ribol','both.glc','both.mannac')
+  
+  #ds2 <- ds2 %>% filter(Rha.x==1 | Rha.y==1)
+  
+  sug.vars<-c('both.glcA','both.NAC','both.rha', 'both.gal', 'both.glcnac','both.ribol','both.glc')
   poisson.list<-  vector("list", length(sug.vars))
   binomial.list<-  vector("list", length(sug.vars))
   for(i in sug.vars){
     form1<-as.formula(paste0('ccN ~  log.st.mlstn.combined +',i))
-    m1 <- glm(form1  ,  data=ds2[ds2[,i] %in% c('1','2') & ds2$same.sg==0,], family='quasipoisson')
+    m1 <- glm(form1  ,  data=ds2[ds2[,i] %in% c('1','2') ,], family='quasipoisson')
    # print(i)
     #print(summary(m1)$coefficients[3,])
     poisson.list[[i]]<-c('estimate'=summary(m1)$coefficients[3,'Estimate'], confint(m1)[3,])
@@ -439,10 +461,12 @@ cc1.mb<-mb.func(cc1)
 mlst1.mb<-mb.func(mlst1)
 gps1.mb<- mb.func(gps1.c)
 ```
+
 Significant rules, ordered by lift
 ```{r}
 gps1.mb$rules_sig_2sero
 ```
+
 ```{r}
 cc1.mb$rules_sig_2sero
 ```
